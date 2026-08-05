@@ -1,0 +1,149 @@
+﻿/* â”€â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.page-wrapper {
+  min-height: 100vh;
+  background: #f0f2f8;
+  display: flex;
+  flex-direction: column;
+}
+
+/* â”€â”€â”€ Navbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.navbar {
+  background: #00008f;
+  padding: 0 2rem;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+
+  .navbar-left { display: flex; align-items: center; gap: 1rem; }
+  .nav-logo { font-weight: 900; font-size: 1.25rem; color: #fff; letter-spacing: 3px; }
+  .nav-divider { width: 1px; height: 20px; background: rgba(255,255,255,.3); }
+  .nav-title { font-size: .9rem; color: rgba(255,255,255,.85); font-weight: 500; }
+  .navbar-right { display: flex; align-items: center; gap: 1rem; }
+  .nav-user { font-size: .875rem; color: rgba(255,255,255,.8); }
+  .btn-logout {
+    background: rgba(255,255,255,.12); color: #fff;
+    border: 1px solid rgba(255,255,255,.25); border-radius: 6px;
+    padding: .3rem .875rem; font-size: .8rem; font-weight: 500; cursor: pointer;
+    transition: background .2s;
+    &:hover { background: rgba(255,255,255,.22); }
+  }
+}
+
+/* â”€â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.main-content { flex: 1; padding: 2rem 1rem 3rem; max-width: 680px; margin: 0 auto; width: 100%; }
+
+/* â”€â”€â”€ Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.hero {
+  margin-bottom: 1.75rem;
+  h1 { font-size: 1.5rem; color: #0a0a5c; font-weight: 700; margin-bottom: .375rem; }
+  p { color: #6b7280; font-size: .9375rem; }
+}
+
+/* â”€â”€â”€ Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,143,.08), 0 1px 4px rgba(0,0,0,.06);
+  overflow: hidden;
+}
+
+/* â”€â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e8eaf0;
+  background: #fafbff;
+
+  .tab {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center; gap: .5rem;
+    padding: 1rem; font-size: .9375rem; font-weight: 600; color: #9ca3af;
+    background: transparent; border: none; border-bottom: 3px solid transparent;
+    cursor: pointer; transition: color .2s, border-color .2s, background .2s;
+
+    .tab-icon { font-size: 1rem; }
+
+    &:hover:not(.active) { color: #4b5563; background: #f3f4f8; }
+    &.active { color: #00008f; border-bottom-color: #00008f; background: #fff; }
+  }
+}
+
+.card-body { padding: 2rem; }
+
+/* â”€â”€â”€ Section info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.section-info {
+  margin-bottom: 1.5rem;
+
+  .info-badge {
+    display: inline-block; font-size: .75rem; font-weight: 700;
+    letter-spacing: .5px; text-transform: uppercase;
+    padding: .3rem .75rem; border-radius: 20px; margin-bottom: .75rem;
+    &.nueva { background: #e0e7ff; color: #3730a3; }
+    &.renovacion { background: #fef3c7; color: #92400e; }
+  }
+
+  .section-desc {
+    font-size: .875rem; color: #6b7280; margin-bottom: .875rem;
+    code { background: #f1f5f9; padding: .15rem .4rem; border-radius: 4px; font-size: .8rem; color: #334155; }
+  }
+
+  .rules-chips {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    .chip {
+      font-size: .78rem; padding: .25rem .625rem;
+      background: #f8faff; border: 1px solid #c7d2fe;
+      border-radius: 20px; color: #4338ca; font-weight: 500;
+    }
+  }
+}
+
+/* â”€â”€â”€ Drop zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.drop-zone {
+  border: 2px dashed #c7d2fe; border-radius: 12px; cursor: pointer;
+  transition: all .25s; margin-bottom: 1.25rem; background: #fafbff;
+
+  &:hover { border-color: #00008f; background: #f0f1ff; }
+
+  &.has-file {
+    border-color: #22c55e; background: #f0fdf4;
+    .drop-icon { color: #16a34a; }
+    .drop-text { color: #16a34a; font-weight: 600; }
+  }
+
+  .drop-visual { padding: 2.5rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: .5rem; text-align: center; }
+  .drop-icon { font-size: 2rem; color: #a5b4fc; line-height: 1; }
+  .drop-text { font-size: .9375rem; color: #4b5563; margin: 0; }
+  .drop-hint { font-size: .78rem; color: #9ca3af; margin: 0; }
+}
+
+/* â”€â”€â”€ Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.error-banner {
+  display: flex; align-items: center; gap: .5rem;
+  background: #fff5f5; border: 1px solid #fca5a5; border-radius: 8px;
+  color: #dc2626; padding: .625rem .875rem; font-size: .875rem; margin-bottom: 1rem;
+}
+
+/* â”€â”€â”€ BotÃ³n validar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.btn-validate {
+  width: 100%;
+  background: linear-gradient(135deg, #00008f 0%, #0000c0 100%);
+  color: #fff; border: none; border-radius: 10px; padding: 1rem;
+  font-size: 1rem; font-weight: 700; cursor: pointer; letter-spacing: .5px;
+  transition: opacity .2s, transform .1s, box-shadow .2s; min-height: 52px;
+
+  &:hover:not(:disabled) { opacity: .92; box-shadow: 0 6px 20px rgba(0,0,143,.35); transform: translateY(-1px); }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:disabled { opacity: .45; cursor: not-allowed; }
+
+  .btn-loading {
+    display: inline-flex; align-items: center; gap: .5rem;
+    &::before {
+      content: ''; width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+  }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

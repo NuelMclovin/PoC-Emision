@@ -1,0 +1,53 @@
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# Poetry
+poetry.lock
+
+# ─── Variables de entorno ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Credenciales reales — NUNCA subir al repo
+backend/.env
+
+# ─── Archivos temporales / uploads ────────────────────────────────────────────
+backend/tmp/
+*.tmp
+*.log
+
+# ─── Node / Angular ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+.angular/cache/
+*.tsbuildinfo
+
+# ─── IDEs ─────────────────────────────────────────────────────────────────────
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+*.tar

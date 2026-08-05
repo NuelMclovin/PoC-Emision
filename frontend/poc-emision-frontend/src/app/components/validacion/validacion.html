@@ -1,0 +1,98 @@
+﻿<div class="page-wrapper">
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-left">
+      <span class="nav-logo">AXA</span>
+      <span class="nav-divider"></span>
+      <span class="nav-title">Validacion de Macros</span>
+    </div>
+    <div class="navbar-right">
+      <span class="nav-user">{{ username }}</span>
+      <button class="btn-logout" (click)="logout()">Salir</button>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <div class="hero">
+      <h1>Validacion de macros GMM</h1>
+      <p>Selecciona el tipo de operacion, carga tu archivo y obtén un reporte con los errores encontrados.</p>
+    </div>
+
+    <div class="card">
+
+      <div class="tabs">
+        <button class="tab" [class.active]="tabActiva==='nueva'" (click)="setTab('nueva')">
+          &#128203; Poliza Nueva
+        </button>
+        <button class="tab" [class.active]="tabActiva==='renovacion'" (click)="setTab('renovacion')">
+          &#128260; Renovacion
+        </button>
+      </div>
+
+      <div class="card-body">
+
+        <div *ngIf="tabActiva==='nueva'">
+          <div class="section-info">
+            <div class="info-badge nueva">Poliza Nueva &middot; GMM</div>
+            <p class="section-desc">Hoja leida: <code>Layout Poliza Nueva</code></p>
+            <div class="rules-chips">
+              <span class="chip">Titular/Conyuge &le;64 anos</span>
+              <span class="chip">Beneficiario &le;24 anos</span>
+              <span class="chip">Sin duplicados</span>
+              <span class="chip">Cert. con titular</span>
+            </div>
+          </div>
+          <div class="drop-zone" [class.has-file]="!!nombreNueva" (click)="inputNueva.click()">
+            <input #inputNueva type="file" accept=".xlsx,.xls,.xlsm,.csv"
+                   (change)="onArchivoNueva($event)" style="display:none" />
+            <div class="drop-visual">
+              <div class="drop-icon">{{ nombreNueva ? '&#10003;' : '&#8593;' }}</div>
+              <p class="drop-text">{{ nombreNueva || 'Arrastra tu macro o haz clic para seleccionar' }}</p>
+              <p class="drop-hint">XLSX &middot; XLS &middot; XLSM &middot; CSV &mdash; Max. 20 MB</p>
+            </div>
+          </div>
+          <div class="error-banner" *ngIf="error && tabActiva==='nueva'">
+            &#9888; {{ error }}
+          </div>
+          <button class="btn-validate" [disabled]="!archivoNueva || cargando" (click)="validar()">
+            <span *ngIf="!cargando">Validar macro &#8594;</span>
+            <span *ngIf="cargando" class="btn-loading">Analizando&#8230;</span>
+          </button>
+        </div>
+
+        <div *ngIf="tabActiva==='renovacion'">
+          <div class="section-info">
+            <div class="info-badge renovacion">Renovacion &middot; GMM</div>
+            <p class="section-desc">Hoja leida: <code>Layout Renovaciones</code></p>
+            <div class="rules-chips">
+              <span class="chip">Titular/Conyuge &le;70 anos</span>
+              <span class="chip">Exc. hasta 75 con endoso</span>
+              <span class="chip">Tipo movimiento valido</span>
+              <span class="chip">Num. poliza requerido</span>
+            </div>
+          </div>
+          <div class="drop-zone" [class.has-file]="!!nombreRenovacion" (click)="inputRenovacion.click()">
+            <input #inputRenovacion type="file" accept=".xlsx,.xls,.xlsm,.csv"
+                   (change)="onArchivoRenovacion($event)" style="display:none" />
+            <div class="drop-visual">
+              <div class="drop-icon">{{ nombreRenovacion ? '&#10003;' : '&#8593;' }}</div>
+              <p class="drop-text">{{ nombreRenovacion || 'Arrastra tu macro o haz clic para seleccionar' }}</p>
+              <p class="drop-hint">XLSX &middot; XLS &middot; XLSM &middot; CSV &mdash; Max. 20 MB</p>
+            </div>
+          </div>
+          <div class="error-banner" *ngIf="error && tabActiva==='renovacion'">
+            &#9888; {{ error }}
+          </div>
+          <button class="btn-validate" [disabled]="!archivoRenovacion || cargando" (click)="validar()">
+            <span *ngIf="!cargando">Validar macro &#8594;</span>
+            <span *ngIf="cargando" class="btn-loading">Analizando&#8230;</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
