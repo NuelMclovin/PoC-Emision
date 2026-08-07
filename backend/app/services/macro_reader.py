@@ -25,13 +25,14 @@ logger = get_logger()
 TipoAccion = Literal["nueva", "renovacion"]
 TipoProducto = Literal["GMM", "AP"]
 
-# ─── Mapa de layouts: (tipo_accion, tipo_producto) → (nombre_hoja, fila_header)
-LAYOUT_MAP: dict[tuple[str, str], tuple[str, int]] = {
-    ("nueva",      "GMM"): ("Layout Poliza Nueva",    7),
-    ("renovacion", "GMM"): ("Layout Renovaciones",    7),
-    ("nueva",      "AP"):  ("Layout PN AP",            1),
-    ("renovacion", "AP"):  ("Layout Renovaciones AP", 1),
+# Mapa de layouts: (tipo_accion, tipo_producto) → (nombre_hoja, fila_header, filas_a_saltar)
+LAYOUT_MAP: dict[tuple[str, str], tuple[str, int, list]] = {
+    ("nueva",      "GMM"): ("Layout Poliza Nueva",    7, [7]),        # Salta fila 8 (subtítulos)
+    ("renovacion", "GMM"): ("Layout Renovaciones",    7, [7, 8, 9]), # Salta filas 8, 9, 10
+    ("nueva",      "AP"):  ("Layout PN AP",            1, []),        # No salta nada
+    ("renovacion", "AP"):  ("Layout Renovaciones AP", 1, []),        # No salta nada
 }
+
 
 # ─── Normalizacion de nombres de columna ──────────────────────────────────────
 # Todas las claves estan en ASCII MAYUSCULAS sin acentos.
@@ -92,6 +93,10 @@ def _normalizar_nombre_col(nombre: str) -> str:
 
 def _normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [_normalizar_nombre_col(c) for c in df.columns]
+
+    # NUEVO
+    if "PARENTESCO" in df.columns:
+        df["PARENTESCO"] =  df["PARENTESCO"].str.strip().str.capitalize()
     return df
 
 
@@ -113,25 +118,20 @@ def leer_macro(
     content: bytes,
     tipo_accion: TipoAccion = "nueva",
     tipo_producto: TipoProducto = "GMM",
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, int]:  # ← Retorna también offset
     """
     Lee la macro y devuelve un DataFrame con columnas normalizadas.
-
-    Args:
-        filename:      Nombre original del archivo.
-        content:       Bytes del archivo.
-        tipo_accion:   "nueva" o "renovacion".
-        tipo_producto: "GMM" o "AP".
-
+    
     Returns:
-        pd.DataFrame con columnas canonicas sin acentos.
+        (DataFrame, offset_filas)
     """
     ext = ("." + filename.rsplit(".", 1)[-1].lower()) if "." in filename else ""
 
     if ext in {".xlsx", ".xls", ".xlsm"}:
-        df = _leer_excel(filename, content, tipo_accion, tipo_producto)
+        df, offset = _leer_excel(filename, content, tipo_accion, tipo_producto)
     elif ext == ".csv":
         df = _leer_csv(content)
+        offset = 1  # CSV no tiene filas saltadas
     else:
         raise ValueError(
             f"Formato '{ext}' no soportado. Use .xlsx, .xls, .xlsm o .csv"
@@ -146,7 +146,7 @@ def leer_macro(
         "Macro '%s' leida [%s/%s]: %d filas, columnas: %s",
         filename, tipo_accion, tipo_producto, len(df), list(df.columns),
     )
-    return df
+    return df, offset
 
 
 def _leer_excel(
@@ -154,23 +154,25 @@ def _leer_excel(
     content: bytes,
     tipo_accion: TipoAccion,
     tipo_producto: TipoProducto,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, int]:  # ← Retorna también el offset
     clave = (tipo_accion, tipo_producto)
-    nombre_hoja, fila_header = LAYOUT_MAP.get(clave, (None, 7))
+    layout_info = LAYOUT_MAP.get(clave, (None, 7, []))
+    nombre_hoja, fila_header, filas_saltar = layout_info
 
     try:
         excel = pd.ExcelFile(io.BytesIO(content))
 
         if nombre_hoja and nombre_hoja in excel.sheet_names:
             logger.info(
-                "Leyendo hoja oficial '%s' (header en fila %d)",
-                nombre_hoja, fila_header,
+                "Leyendo hoja oficial '%s' (header en fila %d, saltando filas %s)",
+                nombre_hoja, fila_header, filas_saltar,
             )
+            
             df = pd.read_excel(
                 excel,
                 sheet_name=nombre_hoja,
-                header=fila_header - 1,  # pandas usa 0-based
-                dtype=str,
+                header=fila_header - 1,
+                skiprows=filas_saltar,
             )
         else:
             hoja_fallback = excel.sheet_names[0]
@@ -178,12 +180,16 @@ def _leer_excel(
                 "Hoja '%s' no encontrada. Usando primera hoja: '%s'",
                 nombre_hoja, hoja_fallback,
             )
-            df = pd.read_excel(excel, sheet_name=hoja_fallback, dtype=str)
+            df = pd.read_excel(excel, sheet_name=hoja_fallback)
 
         df = df.dropna(how="all")
         df = df.loc[:, df.columns.notna()]
         df = df[df.columns[~df.columns.astype(str).str.startswith("Unnamed")]]
-        return df
+        
+        # ✅ Calcular offset: fila_header + cantidad de filas saltadas
+        offset = fila_header + len(filas_saltar)
+        
+        return df, offset
 
     except Exception as exc:
         raise ValueError(

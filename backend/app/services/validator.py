@@ -23,13 +23,21 @@ def validar_macro(
     df: pd.DataFrame,
     tipo_accion: str = "nueva",
     tipo_producto: str = "GMM",
+    fila_offset: int = 1,  # ← Nuevo parámetro
 ) -> ReporteValidacion:
     """
     Ejecuta las reglas de negocio correspondientes al tipo de macro
     y devuelve un ReporteValidacion completo.
+    
+    Args:
+        filename: Nombre del archivo
+        df: DataFrame con los datos
+        tipo_accion: "nueva" o "renovacion"
+        tipo_producto: "GMM" o "AP"
+        fila_offset: Número de filas saltadas para calcular fila real del Excel
     """
     resultados: list[ResultadoValidacion] = []
-    reglas = obtener_reglas(tipo_accion, tipo_producto)
+    reglas = obtener_reglas(tipo_accion, tipo_producto, fila_offset=fila_offset)  # ✅ Pasar fila_offset
 
     for regla in reglas:
         try:

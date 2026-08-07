@@ -22,9 +22,35 @@ from collections import defaultdict
 from datetime import date, datetime
 from typing import Callable
 
+from ..utils.logger import get_logger
+logger = get_logger() 
+
 import pandas as pd
 
 from ..models.macro_models import ResultadoValidacion, TipoError
+
+
+# Funcion auxiliar para calculo de fila
+def _calcular_fila_real(idx: int, fila_offset: int) -> int:
+    """
+    Calcula el número de fila real del Excel desde el índice del DataFrame.
+    
+    Args:
+        idx: Índice del DataFrame (0-based)
+        fila_offset: Número de filas saltadas + header (offset total)
+    
+    Returns:
+        Número de fila real en el archivo Excel (1-based)
+    
+    Ejemplo:
+        Si saltamos filas [7, 8, 9] (índices 0-based) y header está en fila 7:
+        - offset = 7 + 3 = 10
+        - idx=0 en DataFrame → fila 11 en Excel
+        - idx=1 en DataFrame → fila 12 en Excel
+    """
+    return idx + fila_offset + 1
+
+
 
 # ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -99,20 +125,143 @@ def _col(df: pd.DataFrame, *candidatos: str) -> str | None:
             return col_map[c.upper()]
     return None
 
-
-def _parse_fecha(valor: object) -> date | None:
-    """Parsea fecha desde múltiples formatos comunes."""
+def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str = "nueva") -> date | None:
+    """
+    Parsea fecha desde múltiples formatos comunes.
+    Retorna date si es válida, None si no.
+    """
+    hoy = date.today()
+    
+    # ✅ NUEVO: Manejar NaT de pandas
+    if pd.isna(valor):
+        return None
+    
     if isinstance(valor, (datetime, pd.Timestamp)):
-        return valor.date()
+        try:
+            fecha = valor.date()
+        except (AttributeError, TypeError):
+            return None
+        
+        # ✅ NUEVO: Manejar NaT con try-except
+        try:
+            hora = valor.time() if hasattr(valor, 'time') else None
+        except (AttributeError, TypeError):
+            hora = None
+        
+        # Si tiene hora (no es 00:00:00), rechazar
+        if hora and hora != datetime.min.time():
+            logger.debug(f"  → RECHAZADO: Hora detectada: {hora}")
+            return None
+        
+        # Rechazar fechas imposibles
+        if fecha.year < 1900 or fecha > hoy:
+            logger.debug(f"  → RECHAZADO: Fecha imposible: {fecha}")
+            return None
+        
+        # Validar límites de edad según parentesco
+        if parentesco:
+            edad = _edad(fecha)
+            parentesco_limpio = parentesco.strip()
+            
+            limite = (
+                EDAD_LIMITE_TITULAR_CONYUGE_RENOVACION
+                if tipo_accion == "renovacion"
+                else EDAD_LIMITE_TITULAR_CONYUGE_NUEVA
+            )
+            
+            if parentesco_limpio in PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE:
+                if edad > EDAD_LIMITE_RENOVACION:
+                    logger.debug(f"  → RECHAZADO: {parentesco_limpio} con {edad} años")
+                    return None
+            
+            elif parentesco_limpio in PARENTESCOS_BENEFICIARIO:
+                if edad > EDAD_LIMITE_BENEFICIARIO:
+                    logger.debug(f"  → RECHAZADO: {parentesco_limpio} con {edad} años")
+                    return None
+        
+        logger.debug(f"  → ACEPTADO: {fecha}")
+        return fecha
+    
     if isinstance(valor, date):
         return valor
+    
     if isinstance(valor, str):
+        val_str = str(valor).strip()
+        
+        if not val_str or val_str.lower() == "nan":
+            return None
+        
         for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%y"):
             try:
-                return datetime.strptime(valor.strip(), fmt).date()
+                parsed = datetime.strptime(val_str, fmt).date()
+                
+                if parsed.year < 1900 or parsed > hoy:
+                    continue
+                
+                if parentesco:
+                    edad = _edad(parsed)
+                    parentesco_limpio = parentesco.strip()
+                    
+                    limite = (
+                        EDAD_LIMITE_TITULAR_CONYUGE_RENOVACION
+                        if tipo_accion == "renovacion"
+                        else EDAD_LIMITE_TITULAR_CONYUGE_NUEVA
+                    )
+                    
+                    if parentesco_limpio in PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE:
+                        if edad > EDAD_LIMITE_RENOVACION:
+                            continue
+                    
+                    elif parentesco_limpio in PARENTESCOS_BENEFICIARIO:
+                        if edad > EDAD_LIMITE_BENEFICIARIO:
+                            continue
+                
+                logger.debug(f"  → ACEPTADO: {parsed}")
+                return parsed
             except ValueError:
                 continue
+    
+    logger.debug(f"  → RECHAZADO: No coincide con ningún formato")
     return None
+
+
+def _obtener_razon_rechazo_fecha(valor: object, parentesco: str | None = None, tipo_accion: str = "nueva") ->str:
+    """
+    Retorna la razón por la cual una fecha fue rechazada.
+    """
+    hoy = date.today()
+    
+    if isinstance(valor, (datetime, pd.Timestamp)):
+        fecha = valor.date()
+        hora = valor.time() if hasattr(valor, 'time') else None
+        
+        if hora and hora != datetime.min.time():
+            return f"Parece ser una hora, no una fecha: '{valor}'"
+        
+        if fecha.year < 1900 or fecha > hoy:
+            return "Fecha imposible (antes de 1900 o en el futuro)"
+        
+        if parentesco:
+            edad = _edad(fecha)
+            parentesco_limpio = parentesco.strip()
+            
+            if parentesco_limpio in PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE:
+                if edad > EDAD_LIMITE_RENOVACION:
+                    return f"{parentesco_limpio} con {edad} años supera límite máximo ({EDAD_LIMITE_RENOVACION} años)"
+            
+            elif parentesco_limpio in PARENTESCOS_BENEFICIARIO:
+                if edad > EDAD_LIMITE_BENEFICIARIO:
+                    return f"{parentesco_limpio} con {edad} años supera límite ({EDAD_LIMITE_BENEFICIARIO} años)"
+    
+    val_str = str(valor).strip()
+    
+    if any(x in val_str.lower() for x in ["a.m.", "p.m.", "am", "pm"]):
+        return f"Parece ser una hora, no una fecha: '{val_str}'"
+    
+    if ":" in val_str and "00:00:00" not in val_str:
+        return f"Parece ser una hora, no una fecha: '{val_str}'"
+    
+    return "Formato de fecha inválido: Use DD/MM/YYYY."
 
 
 def _edad(fecha_nac: date) -> int:
@@ -165,7 +314,7 @@ def regla_columnas_requeridas(
 
 # ─── Regla RN-01: duplicados por clave de persona ────────────────────────────
 
-def regla_duplicados_persona(df: pd.DataFrame) -> list[ResultadoValidacion]:
+def regla_duplicados_persona(df: pd.DataFrame, fila_offset: int = 1) -> list[ResultadoValidacion]:
     """
     RN-01 — Duplicados por clave compuesta:
     APELLIDO_PATERNO + APELLIDO_MATERNO + NOMBRE + FECHA_NACIMIENTO + CERTIFICADO.
@@ -188,9 +337,9 @@ def regla_duplicados_persona(df: pd.DataFrame) -> list[ResultadoValidacion]:
             for idx in filas:
                 resultados.append(_err(
                     "Duplicados",
-                    f"Persona duplicada (misma clave en filas {[f+2 for f in filas]}): "
+                    f"Persona duplicada (misma clave en filas {[ _calcular_fila_real(f, fila_offset=fila_offset) for f in filas]}): "
                     f"{' | '.join(str(v) for v in clave if v)}",
-                    fila=idx + 2,
+                    fila=_calcular_fila_real(idx, fila_offset=fila_offset),
                     columna="CERTIFICADO + NOMBRE + APELLIDOS + FECHA_NACIMIENTO",
                 ))
     return resultados
@@ -198,36 +347,66 @@ def regla_duplicados_persona(df: pd.DataFrame) -> list[ResultadoValidacion]:
 
 # ─── Regla RN-02: fecha de nacimiento inválida o futura ──────────────────────
 
-def regla_fecha_nacimiento(df: pd.DataFrame) -> list[ResultadoValidacion]:
-    """RN-02 — Fecha de nacimiento inválida o futura."""
+def regla_fecha_nacimiento(
+    df: pd.DataFrame,
+    tipo_accion: str = "nueva",
+    fila_offset: int = 1,
+) -> list[ResultadoValidacion]:
+    """RN-02 — Fecha de nacimiento inválida, futura, o fuera de límites de edad."""
     resultados: list[ResultadoValidacion] = []
-    col = _col(df, "FECHA_NACIMIENTO")
-    if not col:
+    col_nac = _col(df, "FECHA_NACIMIENTO")
+    col_par = _col(df, "PARENTESCO")
+    
+    if not col_nac:
+        logger.warning("Columna FECHA_NACIMIENTO no encontrada")
         return resultados
 
+    logger.info(f"Validando FECHA_NACIMIENTO. Total filas: {len(df)}")
+    
     hoy = date.today()
-    for idx, val in df[col].items():
+    for idx, row in df.iterrows():
+        val = row.get(col_nac)
+        
+        # ✅ DEBUG: Log de cada celda
+        logger.debug(f"Fila {_calcular_fila_real(idx, fila_offset=fila_offset)}: FECHA_NACIMIENTO = {repr(val)} (tipo: {type(val).__name__})")
+        
         if pd.isna(val) or str(val).strip() == "":
+            logger.debug(f"  → Vacía, saltando")
             continue
-        fecha = _parse_fecha(val)
+        
+        parentesco = row.get(col_par) if col_par else None
+        fecha = _parse_fecha(val, parentesco=parentesco, tipo_accion=tipo_accion)
+        
         if fecha is None:
+            razon = _obtener_razon_rechazo_fecha(val, parentesco=parentesco, tipo_accion=tipo_accion)
+            logger.warning(f"  → RECHAZADA: {razon}")
+            
             resultados.append(_err(
                 "Fecha de nacimiento",
-                f"Formato de fecha inválido: '{val}'. Use DD/MM/YYYY.",
-                fila=int(idx) + 2, columna=col, valor=str(val),
+                razon,
+                fila=_calcular_fila_real(idx, fila_offset=fila_offset),
+                columna=col_nac,
+                valor=str(val),
             ))
         elif fecha > hoy:
+            logger.warning(f"  → RECHAZADA: Fecha futura")
             resultados.append(_err(
                 "Fecha de nacimiento",
                 f"Fecha de nacimiento en el futuro: '{val}'.",
-                fila=int(idx) + 2, columna=col, valor=str(val),
+                fila=_calcular_fila_real(idx, fila_offset=fila_offset),
+                columna=col_nac,
+                valor=str(val),
             ))
+        else:
+            logger.debug(f"  → ACEPTADA")
+    
+    logger.info(f"Validación completada: {len(resultados)} errores")
     return resultados
 
 
 # ─── Regla RN-03: antigüedad anterior a fecha de nacimiento ──────────────────
 
-def regla_antiguedad_vs_nacimiento(df: pd.DataFrame) -> list[ResultadoValidacion]:
+def regla_antiguedad_vs_nacimiento(df: pd.DataFrame, fila_offset: int = 1) -> list[ResultadoValidacion]:
     """RN-03 — La fecha de antigüedad no puede ser anterior a la fecha de nacimiento."""
     resultados: list[ResultadoValidacion] = []
     col_nac = _col(df, "FECHA_NACIMIENTO")
@@ -238,11 +417,13 @@ def regla_antiguedad_vs_nacimiento(df: pd.DataFrame) -> list[ResultadoValidacion
     for idx, row in df.iterrows():
         fecha_nac = _parse_fecha(row.get(col_nac))
         fecha_ant = _parse_fecha(row.get(col_ant))
+        
+        # ✅ NUEVO: Validar que no sean None
         if fecha_nac and fecha_ant and fecha_ant < fecha_nac:
             resultados.append(_err(
                 "Antigüedad inválida",
                 f"Fecha de antigüedad ({row.get(col_ant)}) anterior a fecha de nacimiento ({row.get(col_nac)}).",
-                fila=int(idx) + 2, columna=col_ant,
+                fila=_calcular_fila_real(idx, fila_offset=fila_offset), columna=col_ant,
                 valor=str(row.get(col_ant)),
             ))
     return resultados
@@ -250,7 +431,7 @@ def regla_antiguedad_vs_nacimiento(df: pd.DataFrame) -> list[ResultadoValidacion
 
 # ─── Regla RN-04: certificado sin titular ────────────────────────────────────
 
-def regla_certificado_sin_titular(df: pd.DataFrame) -> list[ResultadoValidacion]:
+def regla_certificado_sin_titular(df: pd.DataFrame, fila_offset: int = 1) -> list[ResultadoValidacion]:
     """RN-04 — Cada certificado debe tener exactamente un titular."""
     resultados: list[ResultadoValidacion] = []
     col_cert = _col(df, "CERTIFICADO")
@@ -262,7 +443,7 @@ def regla_certificado_sin_titular(df: pd.DataFrame) -> list[ResultadoValidacion]
         titulares = grupo[grupo[col_par].str.strip().isin(PARENTESCOS_TITULAR)]
         if titulares.empty:
             # Reportar en la primera fila del certificado
-            primera_fila = int(grupo.index[0]) + 2
+            primera_fila = _calcular_fila_real(int(grupo.index[0]), fila_offset=fila_offset)
             resultados.append(_err(
                 "Certificado sin titular",
                 f"El certificado '{cert}' no tiene ningún registro con parentesco 'Titular'.",
@@ -273,7 +454,7 @@ def regla_certificado_sin_titular(df: pd.DataFrame) -> list[ResultadoValidacion]
 
 # ─── Regla RN-05: más de un cónyuge por certificado ─────────────────────────
 
-def regla_conyuge_unico(df: pd.DataFrame) -> list[ResultadoValidacion]:
+def regla_conyuge_unico(df: pd.DataFrame, fila_offset: int = 1) -> list[ResultadoValidacion]:
     """RN-05 — Solo se permite un cónyuge por certificado."""
     resultados: list[ResultadoValidacion] = []
     col_cert = _col(df, "CERTIFICADO")
@@ -288,14 +469,14 @@ def regla_conyuge_unico(df: pd.DataFrame) -> list[ResultadoValidacion]:
                 resultados.append(_err(
                     "Cónyuge duplicado",
                     f"El certificado '{cert}' tiene {len(conyuges)} cónyuge(s). Solo se permite uno.",
-                    fila=int(idx) + 2, columna=col_par, valor=str(cert),
+                    fila=_calcular_fila_real(int(idx), fila_offset=fila_offset), columna=col_par, valor=str(cert),
                 ))
     return resultados
 
 
 # ─── Regla RN-06: más de un titular por certificado ─────────────────────────
 
-def regla_titular_unico(df: pd.DataFrame) -> list[ResultadoValidacion]:
+def regla_titular_unico(df: pd.DataFrame, fila_offset: int = 1) -> list[ResultadoValidacion]:
     """RN-06 — Solo se permite un titular por certificado."""
     resultados: list[ResultadoValidacion] = []
     col_cert = _col(df, "CERTIFICADO")
@@ -310,7 +491,7 @@ def regla_titular_unico(df: pd.DataFrame) -> list[ResultadoValidacion]:
                 resultados.append(_err(
                     "Titular duplicado",
                     f"El certificado '{cert}' tiene {len(titulares)} titulares. Solo se permite uno.",
-                    fila=int(idx) + 2, columna=col_par, valor=str(cert),
+                    fila=_calcular_fila_real(int(idx), fila_offset=fila_offset), columna=col_par, valor=str(cert),
                 ))
     return resultados
 
@@ -320,6 +501,7 @@ def regla_titular_unico(df: pd.DataFrame) -> list[ResultadoValidacion]:
 def regla_edad_limite(
     df: pd.DataFrame,
     tipo_accion: str = "nueva",
+    fila_offset: int = 1,
 ) -> list[ResultadoValidacion]:
     """
     RN-07 — Titular/Cónyuge > límite: error.
@@ -353,7 +535,7 @@ def regla_edad_limite(
             continue
 
         edad = _edad(fecha_nac)
-        fila = int(idx) + 2
+        fila = _calcular_fila_real(int(idx), fila_offset=fila_offset)
         val_fecha = str(row.get(col_nac))
 
         es_titular_conyuge = parentesco in (PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE)
@@ -401,7 +583,7 @@ def regla_edad_limite(
 
 # ─── Regla RN-09 (Renovación): tipo de movimiento válido ─────────────────────
 
-def regla_tipo_movimiento(df: pd.DataFrame) -> list[ResultadoValidacion]:
+def regla_tipo_movimiento(df: pd.DataFrame, fila_offset: int = 1) -> list[ResultadoValidacion]:
     """RN-09 (solo Renovación GMM) — TIPO_MOVIMIENTO debe ser un valor del catálogo."""
     resultados: list[ResultadoValidacion] = []
     col = _col(df, "TIPO_MOVIMIENTO")
@@ -414,49 +596,54 @@ def regla_tipo_movimiento(df: pd.DataFrame) -> list[ResultadoValidacion]:
                 "Tipo de movimiento",
                 "El campo TIPO_MOVIMIENTO está vacío. Valores válidos: "
                 f"{', '.join(sorted(TIPOS_MOVIMIENTO_VALIDOS))}.",
-                fila=int(idx) + 2, columna=col,
+                fila=_calcular_fila_real(int(idx), fila_offset=fila_offset), columna=col,
             ))
         elif str(val).strip().upper() not in TIPOS_MOVIMIENTO_VALIDOS:
             resultados.append(_err(
                 "Tipo de movimiento",
                 f"Valor inválido en TIPO_MOVIMIENTO: '{val}'. Valores válidos: "
                 f"{', '.join(sorted(TIPOS_MOVIMIENTO_VALIDOS))}.",
-                fila=int(idx) + 2, columna=col, valor=str(val),
+                fila=_calcular_fila_real(int(idx), fila_offset=fila_offset), columna=col, valor=str(val),
             ))
     return resultados
 
 
 # ─── Función principal: obtener reglas según tipo ────────────────────────────
 
-def obtener_reglas(tipo_accion: str, tipo_producto: str) -> list[Callable]:
+def obtener_reglas(tipo_accion: str, tipo_producto: str, fila_offset: int = 1) -> list[Callable]:
     """
     Devuelve la lista de funciones de validación apropiadas para la combinación
     tipo_accion (nueva | renovacion) × tipo_producto (GMM | AP).
+    
+    Args:
+        tipo_accion: "nueva" o "renovacion"
+        tipo_producto: "GMM" o "AP"
+        fila_offset: Número de filas a sumar para mostrar fila real del Excel
     """
     # Reglas base aplicables a todos
     reglas_base: list[Callable] = [
         lambda df: regla_columnas_requeridas(df, tipo_accion, tipo_producto),  # RN-00
-        regla_duplicados_persona,                                               # RN-01
-        regla_fecha_nacimiento,                                                 # RN-02
+        lambda df: regla_duplicados_persona(df, fila_offset=fila_offset),       # RN-01
+        lambda df: regla_fecha_nacimiento(df, tipo_accion=tipo_accion, fila_offset=fila_offset),  # RN-02
     ]
 
     # Reglas exclusivas de GMM (tiene PARENTESCO, ANTIGÜEDAD)
     reglas_gmm: list[Callable] = [
-        regla_antiguedad_vs_nacimiento,     # RN-03
-        regla_certificado_sin_titular,      # RN-04
-        regla_conyuge_unico,                # RN-05
-        regla_titular_unico,               # RN-06
-        lambda df: regla_edad_limite(df, tipo_accion),  # RN-07 + RN-08
+        lambda df: regla_antiguedad_vs_nacimiento(df, fila_offset=fila_offset),     # RN-03
+        lambda df: regla_certificado_sin_titular(df, fila_offset=fila_offset),      # RN-04
+        lambda df: regla_conyuge_unico(df, fila_offset=fila_offset),                # RN-05
+        lambda df: regla_titular_unico(df, fila_offset=fila_offset),               # RN-06
+        lambda df: regla_edad_limite(df, tipo_accion=tipo_accion, fila_offset=fila_offset),  # RN-07 + RN-08
     ]
 
     # Reglas exclusivas de AP (sin parentesco)
     reglas_ap: list[Callable] = [
-        lambda df: regla_edad_limite(df, tipo_accion),  # RN-07 + RN-08 (sin parentesco → no aplica edad, se omite)
+        lambda df: regla_edad_limite(df, tipo_accion=tipo_accion, fila_offset=fila_offset),  # RN-07 + RN-08
     ]
 
     # Reglas exclusivas de Renovación
     reglas_renovacion: list[Callable] = [
-        regla_tipo_movimiento,              # RN-09
+        lambda df: regla_tipo_movimiento(df, fila_offset=fila_offset),              # RN-09
     ]
 
     if tipo_producto == "GMM":
@@ -472,12 +659,12 @@ def obtener_reglas(tipo_accion: str, tipo_producto: str) -> list[Callable]:
 
 # ─── Registro de reglas activas (compatibilidad hacia atrás) ─────────────────
 REGLAS_ACTIVAS: list[Callable[[pd.DataFrame], list[ResultadoValidacion]]] = [
-    regla_columnas_requeridas,      # RN-00
-    regla_duplicados_persona,       # RN-01
-    regla_fecha_nacimiento,         # RN-02
-    regla_antiguedad_vs_nacimiento, # RN-03
-    regla_certificado_sin_titular,  # RN-04
-    regla_conyuge_unico,            # RN-05
-    regla_titular_unico,            # RN-06
-    regla_edad_limite,              # RN-07 + RN-08
+    lambda df: regla_columnas_requeridas(df, tipo_accion="", tipo_producto=""),  # RN-00
+    lambda df: regla_duplicados_persona(df, fila_offset=1),                     # RN-01
+    lambda df: regla_fecha_nacimiento(df, tipo_accion="", fila_offset=1),     # RN-02
+    lambda df: regla_antiguedad_vs_nacimiento(df, fila_offset=1),              # RN-03
+    lambda df: regla_certificado_sin_titular(df, fila_offset=1),               # RN-04
+    lambda df: regla_conyuge_unico(df, fila_offset=1),                         # RN-05
+    lambda df: regla_titular_unico(df, fila_offset=1),                         # RN-06
+    lambda df: regla_edad_limite(df, tipo_accion="", fila_offset=1),           # RN-07 + RN-08
 ]

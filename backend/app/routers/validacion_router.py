@@ -59,8 +59,9 @@ async def validar_macro_endpoint(
         )
 
     try:
-        df = leer_macro(filename, content, tipo_accion=tipo_accion, tipo_producto=tipo_producto)
+        df, offset = leer_macro(filename, content, tipo_accion=tipo_accion, tipo_producto=tipo_producto)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
-    return validar_macro(filename, df, tipo_accion=tipo_accion, tipo_producto=tipo_producto)
+    # ✅ Pasar offset a validar_macro
+    return validar_macro(filename, df, tipo_accion=tipo_accion, tipo_producto=tipo_producto, fila_offset=offset)
