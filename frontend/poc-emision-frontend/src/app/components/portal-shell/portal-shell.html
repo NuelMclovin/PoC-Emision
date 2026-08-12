@@ -1,0 +1,62 @@
+<div class="dashboard-shell" [class.menu-colapsado]="menuColapsado">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <button class="collapse-button" type="button" (click)="toggleMenu()" aria-label="Colapsar menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="brand-copy" *ngIf="!menuColapsado">
+        <strong>Portal de Emision</strong>
+        <small>GMM Colectivo</small>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button type="button" class="nav-item" [class.active]="seccionActiva === 'dashboard'" (click)="irASeccion('dashboard')">
+        <span class="nav-icon">◌</span>
+        <span *ngIf="!menuColapsado">Dashboard</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="seccionActiva === 'nueva'" (click)="irASeccion('nueva')">
+        <span class="nav-icon">+</span>
+        <span *ngIf="!menuColapsado">Nueva GMM</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="seccionActiva === 'renovacion'" (click)="irASeccion('renovacion')">
+        <span class="nav-icon">↻</span>
+        <span *ngIf="!menuColapsado">Renovacion GMM</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-user" *ngIf="!menuColapsado">
+      <span class="user-avatar">{{ username.charAt(0) || 'U' }}</span>
+      <div>
+        <strong>{{ username }}</strong>
+        <small>Administrador</small>
+      </div>
+    </div>
+  </aside>
+
+  <div class="dashboard-main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Portal de emision</p>
+        <h1>{{ titulo }}</h1>
+        <p class="topbar-copy" *ngIf="subtitulo">{{ subtitulo }}</p>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="open-counter">
+          <span class="counter-label">Expedientes abiertos</span>
+          <strong>{{ totalAbiertos }}</strong>
+        </div>
+        <button class="btn-logout" type="button" (click)="logout()">Salir</button>
+      </div>
+    </header>
+
+    <main class="dashboard-content">
+      <ng-content></ng-content>
+    </main>
+  </div>
+</div>

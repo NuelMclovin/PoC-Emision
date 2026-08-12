@@ -21,7 +21,7 @@ export class ReporteComponent implements OnInit {
     if (raw) {
       this.reporte = JSON.parse(raw) as ReporteValidacion;
     } else {
-      this.router.navigate(['/validacion']);
+      this.router.navigate(['/dashboard']);
     }
   }
 
@@ -45,6 +45,6 @@ export class ReporteComponent implements OnInit {
 
   nuevaValidacion(): void {
     sessionStorage.removeItem('ultimo_reporte');
-    this.router.navigate(['/validacion']);
+    this.router.navigate(['/dashboard']);
   }
 }

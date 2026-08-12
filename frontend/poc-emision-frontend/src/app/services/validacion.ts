@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export type TipoAccion = 'nueva' | 'renovacion';
@@ -40,11 +40,14 @@ export class ValidacionService {
     archivo: File,
     tipoAccion: TipoAccion,
     tipoProducto: TipoProducto,
-  ): Observable<ReporteValidacion> {
+  ): Observable<HttpEvent<ReporteValidacion>> {
     const form = new FormData();
     form.append('archivo', archivo, archivo.name);
     form.append('tipo_accion', tipoAccion);
     form.append('tipo_producto', tipoProducto);
-    return this.http.post<ReporteValidacion>(`${this.API}/macro`, form);
+    return this.http.post<ReporteValidacion>(`${this.API}/macro`, form, {
+      observe: 'events',
+      reportProgress: true,
+    });
   }
 }

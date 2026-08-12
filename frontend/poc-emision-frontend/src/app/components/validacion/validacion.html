@@ -1,98 +1,302 @@
-﻿<div class="page-wrapper">
-
-  <!-- Navbar -->
-  <nav class="navbar">
-    <div class="navbar-left">
-      <span class="nav-logo">AXA</span>
-      <span class="nav-divider"></span>
-      <span class="nav-title">Validacion de Macros</span>
-    </div>
-    <div class="navbar-right">
-      <span class="nav-user">{{ username }}</span>
-      <button class="btn-logout" (click)="logout()">Salir</button>
-    </div>
-  </nav>
-
-  <main class="main-content">
-
-    <div class="hero">
-      <h1>Validacion de macros GMM</h1>
-      <p>Selecciona el tipo de operacion, carga tu archivo y obtén un reporte con los errores encontrados.</p>
-    </div>
-
-    <div class="card">
-
-      <div class="tabs">
-        <button class="tab" [class.active]="tabActiva==='nueva'" (click)="setTab('nueva')">
-          &#128203; Poliza Nueva
-        </button>
-        <button class="tab" [class.active]="tabActiva==='renovacion'" (click)="setTab('renovacion')">
-          &#128260; Renovacion
-        </button>
-      </div>
-
-      <div class="card-body">
-
-        <div *ngIf="tabActiva==='nueva'">
-          <div class="section-info">
-            <div class="info-badge nueva">Poliza Nueva &middot; GMM</div>
-            <p class="section-desc">Hoja leida: <code>Layout Poliza Nueva</code></p>
-            <div class="rules-chips">
-              <span class="chip">Titular/Conyuge &le;64 anos</span>
-              <span class="chip">Beneficiario &le;24 anos</span>
-              <span class="chip">Sin duplicados</span>
-              <span class="chip">Cert. con titular</span>
-            </div>
-          </div>
-          <div class="drop-zone" [class.has-file]="!!nombreNueva" (click)="inputNueva.click()">
-            <input #inputNueva type="file" accept=".xlsx,.xls,.xlsm,.csv"
-                   (change)="onArchivoNueva($event)" style="display:none" />
-            <div class="drop-visual">
-              <div class="drop-icon">{{ nombreNueva ? '&#10003;' : '&#8593;' }}</div>
-              <p class="drop-text">{{ nombreNueva || 'Arrastra tu macro o haz clic para seleccionar' }}</p>
-              <p class="drop-hint">XLSX &middot; XLS &middot; XLSM &middot; CSV &mdash; Max. 20 MB</p>
-            </div>
-          </div>
-          <div class="error-banner" *ngIf="error && tabActiva==='nueva'">
-            &#9888; {{ error }}
-          </div>
-          <button class="btn-validate" [disabled]="!archivoNueva || cargando" (click)="validar()">
-            <span *ngIf="!cargando">Validar macro &#8594;</span>
-            <span *ngIf="cargando" class="btn-loading">Analizando&#8230;</span>
-          </button>
-        </div>
-
-        <div *ngIf="tabActiva==='renovacion'">
-          <div class="section-info">
-            <div class="info-badge renovacion">Renovacion &middot; GMM</div>
-            <p class="section-desc">Hoja leida: <code>Layout Renovaciones</code></p>
-            <div class="rules-chips">
-              <span class="chip">Titular/Conyuge &le;70 anos</span>
-              <span class="chip">Exc. hasta 75 con endoso</span>
-              <span class="chip">Tipo movimiento valido</span>
-              <span class="chip">Num. poliza requerido</span>
-            </div>
-          </div>
-          <div class="drop-zone" [class.has-file]="!!nombreRenovacion" (click)="inputRenovacion.click()">
-            <input #inputRenovacion type="file" accept=".xlsx,.xls,.xlsm,.csv"
-                   (change)="onArchivoRenovacion($event)" style="display:none" />
-            <div class="drop-visual">
-              <div class="drop-icon">{{ nombreRenovacion ? '&#10003;' : '&#8593;' }}</div>
-              <p class="drop-text">{{ nombreRenovacion || 'Arrastra tu macro o haz clic para seleccionar' }}</p>
-              <p class="drop-hint">XLSX &middot; XLS &middot; XLSM &middot; CSV &mdash; Max. 20 MB</p>
-            </div>
-          </div>
-          <div class="error-banner" *ngIf="error && tabActiva==='renovacion'">
-            &#9888; {{ error }}
-          </div>
-          <button class="btn-validate" [disabled]="!archivoRenovacion || cargando" (click)="validar()">
-            <span *ngIf="!cargando">Validar macro &#8594;</span>
-            <span *ngIf="cargando" class="btn-loading">Analizando&#8230;</span>
-          </button>
-        </div>
-
+﻿<div class="dashboard-shell" [class.menu-colapsado]="menuColapsado">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <button class="collapse-button" type="button" (click)="toggleMenu()" aria-label="Colapsar menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="brand-copy" *ngIf="!menuColapsado">
+        <strong>Portal de Emision</strong>
+        <small>GMM Colectivo</small>
       </div>
     </div>
 
-  </main>
+    <nav class="sidebar-nav">
+      <button type="button" class="nav-item" [class.active]="vistaActiva === 'dashboard'" (click)="irASeccion('dashboard')">
+        <span class="nav-icon">◌</span>
+        <span *ngIf="!menuColapsado">Dashboard</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="vistaActiva === 'nueva'" (click)="irASeccion('nueva')">
+        <span class="nav-icon">+</span>
+        <span *ngIf="!menuColapsado">Nueva GMM</span>
+      </button>
+
+      <button type="button" class="nav-item" [class.active]="vistaActiva === 'renovacion'" (click)="irASeccion('renovacion')">
+        <span class="nav-icon">↻</span>
+        <span *ngIf="!menuColapsado">Renovacion GMM</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-user" *ngIf="!menuColapsado">
+      <span class="user-avatar">{{ username.charAt(0) || 'U' }}</span>
+      <div>
+        <strong>{{ username }}</strong>
+        <small>Administrador</small>
+      </div>
+    </div>
+  </aside>
+
+  <div class="dashboard-main">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Portal de emision</p>
+        <h1>{{ esDashboard ? 'Dashboard de Emision' : tituloProceso }}</h1>
+        <p class="topbar-copy" *ngIf="!esDashboard">{{ descripcionProceso }}</p>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="open-counter">
+          <span class="counter-label">Expedientes abiertos</span>
+          <strong>{{ totalAbiertos }}</strong>
+        </div>
+        <button class="btn-logout" type="button" (click)="logout()">Salir</button>
+      </div>
+    </header>
+
+    <main class="dashboard-content">
+      <section class="summary-grid">
+        <article class="summary-card accent-red">
+          <span class="summary-label">Abiertos actualmente</span>
+          <strong>{{ totalAbiertos }}</strong>
+          <small>Expedientes activos en seguimiento</small>
+        </article>
+
+        <article class="summary-card accent-blue">
+          <span class="summary-label">Nueva GMM</span>
+          <strong>{{ abiertosNueva }}</strong>
+          <small>Cotizaciones nuevas en curso</small>
+        </article>
+
+        <article class="summary-card accent-gold">
+          <span class="summary-label">Renovacion GMM</span>
+          <strong>{{ abiertosRenovacion }}</strong>
+          <small>Renovaciones pendientes o en revision</small>
+        </article>
+      </section>
+
+      <section class="widgets-section" *ngIf="esDashboard; else vistaProceso">
+        <div class="section-heading">
+          <div>
+            <h2>Nueva cotizacion</h2>
+            <p>Accesos directos para iniciar el proceso de nueva emision o renovacion GMM.</p>
+          </div>
+        </div>
+
+        <div class="widget-grid">
+          <article class="widget-card widget-card-compact">
+            <div class="widget-head">
+              <div>
+                <span class="widget-kicker">Nueva GMM</span>
+                <h3>GMM Poliza Nueva</h3>
+              </div>
+            </div>
+
+            <p>Emision de poliza nueva para grupos con validacion de reglas obligatorias y revision del censo.</p>
+            <button class="widget-link widget-link-inline" type="button" (click)="abrirProceso('nueva')">Abrir proceso</button>
+          </article>
+
+          <article class="widget-card widget-card-compact">
+            <div class="widget-head">
+              <div>
+                <span class="widget-kicker">Renovacion GMM</span>
+                <h3>GMM Renovacion</h3>
+              </div>
+            </div>
+
+            <p>Renovacion de polizas colectivas con control de movimientos, excepciones y consistencia del archivo.</p>
+            <button class="widget-link widget-link-inline" type="button" (click)="abrirProceso('renovacion')">Abrir proceso</button>
+          </article>
+        </div>
+      </section>
+
+      <ng-template #vistaProceso>
+        <section class="process-layout">
+          <aside class="process-help">
+            <h2>Layout del censo</h2>
+            <p>El archivo debe incluir la estructura esperada para validar automaticamente la macro GMM.</p>
+
+            <ul class="process-list">
+              <li *ngFor="let columna of configuracionActual.columnas">{{ columna }}</li>
+            </ul>
+
+            <div class="process-note">
+              {{ configuracionActual.nota }}
+            </div>
+          </aside>
+
+          <section class="process-card">
+            <div class="section-heading process-heading">
+              <div>
+                <h2>{{ configuracionActual.tituloPanel }}</h2>
+                <p>{{ configuracionActual.subtituloPanel }}</p>
+              </div>
+            </div>
+
+            <div
+              class="drop-zone process-drop-zone"
+              [class.has-file]="!!etiquetaArchivo"
+              [class.is-dragover]="arrastrandoArchivo"
+              (click)="tabActiva === 'nueva' ? inputNueva.click() : inputRenovacion.click()">
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDropArchivo($event)">
+              <input #inputNueva type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoNueva($event)" hidden />
+              <input #inputRenovacion type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoRenovacion($event)" hidden />
+              <div class="drop-visual process-drop-visual">
+                <div class="drop-icon">{{ etiquetaArchivo ? 'OK' : 'UP' }}</div>
+                <p class="drop-text">{{ etiquetaArchivo || 'Arrastra tu macro aqui o haz clic para subirla' }}</p>
+                <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
+                <p class="drop-subhint">{{ tabActiva === 'nueva' ? 'Proceso para alta de poliza nueva' : 'Proceso para renovacion de poliza vigente' }}</p>
+              </div>
+            </div>
+
+            <div class="error-banner" *ngIf="error">
+              {{ error }}
+            </div>
+
+            <button
+              class="btn-validate process-button"
+              type="button"
+              [disabled]="botonDeshabilitado(tabActiva)"
+              [class.is-loading]="cargando"
+              [style.--progress.%]="cargando ? progresoBoton : 0"
+              (click)="validar()">
+              <span class="btn-progress-fill" aria-hidden="true"></span>
+              <span class="btn-label">{{ etiquetaBoton(tabActiva) }}</span>
+            </button>
+
+            <section class="inline-report" *ngIf="reporteActual as reporte">
+              <div class="inline-report-header">
+                <div>
+                  <h3>Resultado de la validacion</h3>
+                  <p>{{ reporte.nombre_archivo }}</p>
+                </div>
+                <div class="inline-status" [class.ok]="reporte.resumen.es_valida" [class.ko]="!reporte.resumen.es_valida">
+                  {{ reporte.resumen.es_valida ? 'Macro valida' : 'Macro con errores' }}
+                </div>
+              </div>
+
+              <div class="inline-kpis">
+                <article class="inline-kpi">
+                  <strong>{{ reporte.resumen.total_registros }}</strong>
+                  <span>Registros</span>
+                </article>
+                <article class="inline-kpi">
+                  <strong>{{ reporte.resumen.total_titulares }}</strong>
+                  <span>Titulares</span>
+                </article>
+                <article class="inline-kpi">
+                  <strong>{{ reporte.resumen.total_dependientes }}</strong>
+                  <span>Dependientes</span>
+                </article>
+                <article class="inline-kpi error">
+                  <strong>{{ reporte.resumen.total_errores }}</strong>
+                  <span>Errores</span>
+                </article>
+                <article class="inline-kpi warn">
+                  <strong>{{ reporte.resumen.total_advertencias }}</strong>
+                  <span>Advertencias</span>
+                </article>
+              </div>
+
+              <div class="report-filters">
+                <button class="filter-btn" type="button" [class.active]="filtroResultados === 'todos'" (click)="setFiltroResultados('todos')">
+                  Todos
+                  <span>{{ reporte.resultados.length }}</span>
+                </button>
+                <button class="filter-btn error" type="button" [class.active]="filtroResultados === 'error'" (click)="setFiltroResultados('error')">
+                  Errores
+                  <span>{{ totalErrores }}</span>
+                </button>
+                <button class="filter-btn warn" type="button" [class.active]="filtroResultados === 'advertencia'" (click)="setFiltroResultados('advertencia')">
+                  Advertencias
+                  <span>{{ totalAdvertencias }}</span>
+                </button>
+              </div>
+
+              <div class="inline-table-wrapper" *ngIf="resultadosFiltrados.length > 0; else sinResultadosInline">
+                <table class="inline-table">
+                  <thead>
+                    <tr>
+                      <th>Tipo</th>
+                      <th>Categoria</th>
+                      <th>Mensaje</th>
+                      <th>Fila</th>
+                      <th>Columna</th>
+                      <th>Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let resultado of resultadosFiltrados" [class]="'row-' + obtenerClaseResultado(resultado.tipo)">
+                      <td>
+                        <span class="result-badge" [class]="'badge-' + obtenerClaseResultado(resultado.tipo)">
+                          {{ resultado.tipo === 'advertencia' ? 'Advertencia' : 'Error' }}
+                        </span>
+                      </td>
+                      <td>{{ resultado.categoria }}</td>
+                      <td>{{ resultado.mensaje }}</td>
+                      <td>{{ resultado.fila ?? '-' }}</td>
+                      <td>{{ resultado.columna ?? '-' }}</td>
+                      <td>{{ resultado.valor ?? '-' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <ng-template #sinResultadosInline>
+                <div class="empty-inline-report">
+                  No hay resultados para el filtro seleccionado.
+                </div>
+              </ng-template>
+            </section>
+          </section>
+        </section>
+      </ng-template>
+
+      <section class="history-section">
+        <div class="section-heading history-heading">
+          <div>
+            <h2>Historial de expedientes</h2>
+            <p>Seguimiento rapido de los casos recientes en nueva emision y renovacion.</p>
+          </div>
+          <button class="primary-action" type="button" (click)="abrirProceso('nueva')">Nuevo expediente</button>
+        </div>
+
+        <div class="history-table-wrapper">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Folio</th>
+                <th>Empresa</th>
+                <th>Tipo</th>
+                <th>Asegurados</th>
+                <th>Estado</th>
+                <th>Actualizacion</th>
+                <th>Accion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let expediente of expedientes">
+                <td class="folio-cell">{{ expediente.folio }}</td>
+                <td>{{ expediente.empresa }}</td>
+                <td>{{ expediente.tipo }}</td>
+                <td>{{ expediente.asegurados }}</td>
+                <td>
+                  <span class="status-pill" [ngClass]="estadoClase(expediente.estado)">
+                    {{ expediente.estado }}
+                  </span>
+                </td>
+                <td>{{ expediente.actualizado }}</td>
+                <td>
+                  <button class="table-action" type="button" (click)="verExpediente(expediente)">Ver</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
 </div>
