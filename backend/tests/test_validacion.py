@@ -5,6 +5,7 @@ Ejecutar con: poetry run pytest  (o .venv\\Scripts\\python -m pytest)
 from __future__ import annotations
 
 from datetime import date, timedelta
+from io import BytesIO
 
 import pandas as pd
 import pytest
@@ -20,6 +21,7 @@ from app.core.reglas_negocio import (
     regla_titular_unico,
 )
 from app.models.macro_models import TipoError
+from app.services.macro_reader import leer_macro
 
 
 # ─── Helper para construir DataFrames de prueba ───────────────────────────────
@@ -41,6 +43,11 @@ def _fila(**kwargs) -> dict:
 
 def _df(*filas: dict) -> pd.DataFrame:
     return pd.DataFrame(list(filas))
+
+
+def _csv_bytes(*filas: list[str]) -> bytes:
+    texto = "\n".join(",".join(fila) for fila in filas)
+    return texto.encode("utf-8")
 
 
 # ─── RN-00: columnas requeridas ───────────────────────────────────────────────
@@ -199,3 +206,90 @@ def test_titular_mayor_75_con_endoso_siempre_error():
     ))
     resultados = regla_edad_limite(df)
     assert any(r.tipo == TipoError.ERROR for r in resultados)
+
+
+def test_fecha_nacimiento_futura_reporta_mensaje_correcto():
+    df = _df(_fila(FECHA_NACIMIENTO="2040-01-01"))
+    resultados = regla_fecha_nacimiento(df)
+    assert any("en el futuro" in r.mensaje.lower() for r in resultados)
+
+
+# ─── CSV crudo sin encabezados ────────────────────────────────────────────────
+
+def test_leer_csv_crudo_nueva_gmm_sin_encabezados():
+    content = _csv_bytes(
+        ["Juan", "García", "López", "01/01/1985", "01/01/2010", "Titular", "CERT-001"],
+        ["Ana", "García", "López", "01/02/1987", "01/01/2010", "Cónyuge", "CERT-001"],
+    )
+
+    df, offset = leer_macro("prueba.csv", content, tipo_accion="nueva", tipo_producto="GMM")
+
+    assert offset == 1
+    assert list(df.columns) == [
+        "NOMBRE",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "FECHA_NACIMIENTO",
+        "FECHA_ANTIGUEDAD",
+        "PARENTESCO",
+        "CERTIFICADO",
+    ]
+    assert df.iloc[0]["NOMBRE"] == "Juan"
+    assert df.iloc[1]["PARENTESCO"] == "Cónyuge"
+
+
+def test_leer_csv_crudo_renovacion_gmm_sin_encabezados():
+    content = _csv_bytes(
+        [
+            "Juan", "García", "López", "01/01/1985", "01/01/2010",
+            "Titular", "CERT-001", "ALTA", "POL-123"
+        ],
+    )
+
+    df, offset = leer_macro("prueba.csv", content, tipo_accion="renovacion", tipo_producto="GMM")
+
+    assert offset == 1
+    assert list(df.columns) == [
+        "NOMBRE",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "FECHA_NACIMIENTO",
+        "FECHA_ANTIGUEDAD",
+        "PARENTESCO",
+        "CERTIFICADO",
+        "TIPO_MOVIMIENTO",
+        "NUMERO_POLIZA",
+    ]
+    assert df.iloc[0]["TIPO_MOVIMIENTO"] == "ALTA"
+    assert df.iloc[0]["NUMERO_POLIZA"] == "POL-123"
+
+
+def test_leer_csv_crudo_nueva_gmm_con_fechas_guion_sin_corrimiento():
+    content = _csv_bytes(
+        ["FERNANDO", "PEREZ", "LOPEZ", "198-06-15", "2010-01-01", "Titular", "001"],
+        ["MARIA", "PEREZ", "LOPEZ", "2040-01-01", "2010-01-01", "Hijo", "002"],
+    )
+
+    df, _ = leer_macro("prueba.csv", content, tipo_accion="nueva", tipo_producto="GMM")
+
+    assert df.iloc[0]["FECHA_NACIMIENTO"] == "198-06-15"
+    assert df.iloc[0]["FECHA_ANTIGUEDAD"] == "2010-01-01"
+    assert df.iloc[1]["FECHA_NACIMIENTO"] == "2040-01-01"
+
+
+def test_fecha_csv_acepta_guion_y_diagonal():
+    df = _df(
+        _fila(FECHA_NACIMIENTO="1985-01-01", FECHA_ANTIGUEDAD="2010/01/01"),
+        _fila(FECHA_NACIMIENTO="01/02/1987", FECHA_ANTIGUEDAD="2011-02-01", CERTIFICADO="CERT-002"),
+    )
+    resultados = regla_fecha_nacimiento(df)
+    assert resultados == []
+
+
+def test_antiguedad_csv_acepta_guion_y_diagonal():
+    df = _df(
+        _fila(FECHA_NACIMIENTO="1985/01/01", FECHA_ANTIGUEDAD="2010-01-01"),
+        _fila(FECHA_NACIMIENTO="1980-05-10", FECHA_ANTIGUEDAD="2012/06/01", CERTIFICADO="CERT-003"),
+    )
+    resultados = regla_antiguedad_vs_nacimiento(df)
+    assert resultados == []

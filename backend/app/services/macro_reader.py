@@ -9,6 +9,7 @@ Soporta los 4 layouts oficiales de AXA:
 """
 from __future__ import annotations
 
+import csv
 import io
 import unicodedata
 from typing import Literal
@@ -31,6 +32,46 @@ LAYOUT_MAP: dict[tuple[str, str], tuple[str, int, list]] = {
     ("renovacion", "GMM"): ("Layout Renovaciones",    7, [7, 8, 9]), # Salta filas 8, 9, 10
     ("nueva",      "AP"):  ("Layout PN AP",            1, []),        # No salta nada
     ("renovacion", "AP"):  ("Layout Renovaciones AP", 1, []),        # No salta nada
+}
+
+
+# ─── Orden de columnas esperado en CSV crudo (sin encabezados) ───────────────
+
+COLUMNAS_CSV_CRUDO: dict[tuple[str, str], list[str]] = {
+    ("nueva", "GMM"): [
+        "NOMBRE",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "FECHA_NACIMIENTO",
+        "FECHA_ANTIGUEDAD",
+        "PARENTESCO",
+        "CERTIFICADO",
+    ],
+    ("renovacion", "GMM"): [
+        "NOMBRE",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "FECHA_NACIMIENTO",
+        "FECHA_ANTIGUEDAD",
+        "PARENTESCO",
+        "CERTIFICADO",
+        "TIPO_MOVIMIENTO",
+        "NUMERO_POLIZA",
+    ],
+    ("nueva", "AP"): [
+        "NOMBRE",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "FECHA_NACIMIENTO",
+        "CERTIFICADO",
+    ],
+    ("renovacion", "AP"): [
+        "NOMBRE",
+        "APELLIDO_PATERNO",
+        "APELLIDO_MATERNO",
+        "FECHA_NACIMIENTO",
+        "CERTIFICADO",
+    ],
 }
 
 
@@ -111,6 +152,29 @@ def _detectar_encoding(data: bytes) -> str:
     return enc
 
 
+def _columnas_csv_crudo(tipo_accion: TipoAccion, tipo_producto: TipoProducto) -> list[str]:
+    return COLUMNAS_CSV_CRUDO[(tipo_accion, tipo_producto)]
+
+
+def _parece_encabezado_csv(
+    primera_fila: list[str],
+    tipo_accion: TipoAccion,
+    tipo_producto: TipoProducto,
+) -> bool:
+    """Detecta encabezado real comparando la primera fila contra columnas esperadas/alias."""
+    esperadas = {_normalizar_nombre_col(c) for c in _columnas_csv_crudo(tipo_accion, tipo_producto)}
+    primera_norm = {
+        _normalizar_nombre_col(str(c))
+        for c in primera_fila
+        if str(c).strip() != ""
+    }
+    if not primera_norm:
+        return False
+    # Si al menos la mitad coincide con nombres esperados, lo tratamos como encabezado.
+    coincidencias = len(primera_norm & esperadas)
+    return coincidencias >= max(1, len(esperadas) // 2)
+
+
 # ─── API publica ──────────────────────────────────────────────────────────────
 
 def leer_macro(
@@ -130,7 +194,7 @@ def leer_macro(
     if ext in {".xlsx", ".xls", ".xlsm"}:
         df, offset = _leer_excel(filename, content, tipo_accion, tipo_producto)
     elif ext == ".csv":
-        df = _leer_csv(content)
+        df = _leer_csv(content, tipo_accion=tipo_accion, tipo_producto=tipo_producto)
         offset = 1  # CSV no tiene filas saltadas
     else:
         raise ValueError(
@@ -197,13 +261,40 @@ def _leer_excel(
         ) from exc
 
 
-def _leer_csv(content: bytes) -> pd.DataFrame:
+def _leer_csv(
+    content: bytes,
+    tipo_accion: TipoAccion,
+    tipo_producto: TipoProducto,
+) -> pd.DataFrame:
     encoding = _detectar_encoding(content)
     for enc in dict.fromkeys(
         [encoding, "utf-8-sig", "iso-8859-1", "cp1252", "latin-1"]
     ):
         try:
-            df = pd.read_csv(io.BytesIO(content), encoding=enc, dtype=str)
+            texto = content.decode(enc)
+            muestra = texto[:4096]
+
+            try:
+                tiene_encabezado_sniffer = csv.Sniffer().has_header(muestra)
+            except csv.Error:
+                tiene_encabezado_sniffer = False
+
+            # Revisar primera fila explícitamente para evitar falsos positivos del sniffer.
+            primera_fila = next(csv.reader(io.StringIO(texto)), [])
+            tiene_encabezado = _parece_encabezado_csv(primera_fila, tipo_accion, tipo_producto)
+            if not tiene_encabezado and tiene_encabezado_sniffer:
+                logger.debug("CSV detectado como crudo: se ignora has_header de Sniffer por baja coincidencia de encabezados")
+
+            if tiene_encabezado:
+                df = pd.read_csv(io.StringIO(texto), dtype=str)
+            else:
+                df = pd.read_csv(
+                    io.StringIO(texto),
+                    header=None,
+                    names=_columnas_csv_crudo(tipo_accion, tipo_producto),
+                    dtype=str,
+                )
+
             return df.dropna(how="all")
         except (UnicodeDecodeError, Exception):
             continue

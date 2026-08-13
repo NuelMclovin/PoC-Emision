@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime
+import re
 from typing import Callable
 
 from ..utils.logger import get_logger
@@ -130,8 +131,7 @@ def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str 
     Parsea fecha desde múltiples formatos comunes.
     Retorna date si es válida, None si no.
     """
-    hoy = date.today()
-    
+
     # ✅ NUEVO: Manejar NaT de pandas
     if pd.isna(valor):
         return None
@@ -153,32 +153,6 @@ def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str 
             logger.debug(f"  → RECHAZADO: Hora detectada: {hora}")
             return None
         
-        # Rechazar fechas imposibles
-        if fecha.year < 1900 or fecha > hoy:
-            logger.debug(f"  → RECHAZADO: Fecha imposible: {fecha}")
-            return None
-        
-        # Validar límites de edad según parentesco
-        if parentesco:
-            edad = _edad(fecha)
-            parentesco_limpio = parentesco.strip()
-            
-            limite = (
-                EDAD_LIMITE_TITULAR_CONYUGE_RENOVACION
-                if tipo_accion == "renovacion"
-                else EDAD_LIMITE_TITULAR_CONYUGE_NUEVA
-            )
-            
-            if parentesco_limpio in PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE:
-                if edad > EDAD_LIMITE_RENOVACION:
-                    logger.debug(f"  → RECHAZADO: {parentesco_limpio} con {edad} años")
-                    return None
-            
-            elif parentesco_limpio in PARENTESCOS_BENEFICIARIO:
-                if edad > EDAD_LIMITE_BENEFICIARIO:
-                    logger.debug(f"  → RECHAZADO: {parentesco_limpio} con {edad} años")
-                    return None
-        
         logger.debug(f"  → ACEPTADO: {fecha}")
         return fecha
     
@@ -191,30 +165,13 @@ def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str 
         if not val_str or val_str.lower() == "nan":
             return None
         
-        for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%y"):
+        # Acepta separadores '-' y '/' en fechas D/M/Y o Y/M/D.
+        # Normalizamos a '/' para evitar duplicar formatos.
+        normalizada = re.sub(r"\s+", "", val_str).replace("-", "/")
+
+        for fmt in ("%d/%m/%Y", "%Y/%m/%d", "%d/%m/%y"):
             try:
-                parsed = datetime.strptime(val_str, fmt).date()
-                
-                if parsed.year < 1900 or parsed > hoy:
-                    continue
-                
-                if parentesco:
-                    edad = _edad(parsed)
-                    parentesco_limpio = parentesco.strip()
-                    
-                    limite = (
-                        EDAD_LIMITE_TITULAR_CONYUGE_RENOVACION
-                        if tipo_accion == "renovacion"
-                        else EDAD_LIMITE_TITULAR_CONYUGE_NUEVA
-                    )
-                    
-                    if parentesco_limpio in PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE:
-                        if edad > EDAD_LIMITE_RENOVACION:
-                            continue
-                    
-                    elif parentesco_limpio in PARENTESCOS_BENEFICIARIO:
-                        if edad > EDAD_LIMITE_BENEFICIARIO:
-                            continue
+                parsed = datetime.strptime(normalizada, fmt).date()
                 
                 logger.debug(f"  → ACEPTADO: {parsed}")
                 return parsed
@@ -229,29 +186,11 @@ def _obtener_razon_rechazo_fecha(valor: object, parentesco: str | None = None, t
     """
     Retorna la razón por la cual una fecha fue rechazada.
     """
-    hoy = date.today()
-    
     if isinstance(valor, (datetime, pd.Timestamp)):
-        fecha = valor.date()
         hora = valor.time() if hasattr(valor, 'time') else None
-        
+
         if hora and hora != datetime.min.time():
             return f"Parece ser una hora, no una fecha: '{valor}'"
-        
-        if fecha.year < 1900 or fecha > hoy:
-            return "Fecha imposible (antes de 1900 o en el futuro)"
-        
-        if parentesco:
-            edad = _edad(fecha)
-            parentesco_limpio = parentesco.strip()
-            
-            if parentesco_limpio in PARENTESCOS_TITULAR | PARENTESCOS_CONYUGE:
-                if edad > EDAD_LIMITE_RENOVACION:
-                    return f"{parentesco_limpio} con {edad} años supera límite máximo ({EDAD_LIMITE_RENOVACION} años)"
-            
-            elif parentesco_limpio in PARENTESCOS_BENEFICIARIO:
-                if edad > EDAD_LIMITE_BENEFICIARIO:
-                    return f"{parentesco_limpio} con {edad} años supera límite ({EDAD_LIMITE_BENEFICIARIO} años)"
     
     val_str = str(valor).strip()
     
@@ -261,7 +200,7 @@ def _obtener_razon_rechazo_fecha(valor: object, parentesco: str | None = None, t
     if ":" in val_str and "00:00:00" not in val_str:
         return f"Parece ser una hora, no una fecha: '{val_str}'"
     
-    return "Formato de fecha inválido: Use DD/MM/YYYY."
+    return "Fecha o Formato Invalidos"
 
 
 def _edad(fecha_nac: date) -> int:
@@ -352,7 +291,7 @@ def regla_fecha_nacimiento(
     tipo_accion: str = "nueva",
     fila_offset: int = 1,
 ) -> list[ResultadoValidacion]:
-    """RN-02 — Fecha de nacimiento inválida, futura, o fuera de límites de edad."""
+    """RN-02 — Fecha de nacimiento inválida, futura o imposible (< 1900)."""
     resultados: list[ResultadoValidacion] = []
     col_nac = _col(df, "FECHA_NACIMIENTO")
     col_par = _col(df, "PARENTESCO")
@@ -384,6 +323,15 @@ def regla_fecha_nacimiento(
             resultados.append(_err(
                 "Fecha de nacimiento",
                 razon,
+                fila=_calcular_fila_real(idx, fila_offset=fila_offset),
+                columna=col_nac,
+                valor=str(val),
+            ))
+        elif fecha.year < 1900:
+            logger.warning("  → RECHAZADA: Fecha anterior a 1900")
+            resultados.append(_err(
+                "Fecha de nacimiento",
+                f"Fecha imposible (anterior a 1900): '{val}'.",
                 fila=_calcular_fila_real(idx, fila_offset=fila_offset),
                 columna=col_nac,
                 valor=str(val),
@@ -559,14 +507,9 @@ def regla_edad_limite(
                     fila=fila, columna=col_nac, valor=val_fecha,
                 ))
             else:
-                hint = (
-                    f" Para incluirlo, complete '{col_endoso}' y '{col_comentario}'."
-                    if col_endoso
-                    else " Agregue columna 'TIENE_ENDOSO'=SI y 'COMENTARIO' con justificación."
-                )
                 resultados.append(_err(
                     "Edad fuera de límite",
-                    f"{parentesco} con {edad} años supera el límite de {limite} años.{hint}",
+                    f"{parentesco} con {edad} años supera el límite de {limite} años.",
                     fila=fila, columna=col_nac, valor=val_fecha,
                 ))
 
