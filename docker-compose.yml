@@ -17,7 +17,7 @@ services:
   frontend:
     build:
       context: ./frontend/poc-emision-frontend
-      dockerfile: Dockerfile
+      dockerfile: ../Dockerfile
     container_name: poc-emision-frontend
     ports:
       - "4200:80"
