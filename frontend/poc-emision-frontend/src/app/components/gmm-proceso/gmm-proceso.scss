@@ -88,18 +88,19 @@
   color: #5e6a84;
   background: #f6f8ff;
 
+  // cuando esta analianzo tiene un color gris
   &.analizando {
+    color: #5e6a84;
+    border-color: rgba(94, 106, 132, 0.35);
+    background: rgba(94, 106, 132, 0.1);
+  }
+  // cuando esta listo tiene un color azul
+  &.listo {
     color: #2b33bf;
     border-color: rgba(43, 51, 191, 0.35);
-    background: rgba(43, 51, 191, 0.1);
+    background: rgba(43, 51, 191, 0.12);
   }
-
-  &.listo {
-    color: #258d52;
-    border-color: rgba(46, 170, 98, 0.35);
-    background: rgba(46, 170, 98, 0.1);
-  }
-
+  // cuando esta error tiene un color rojo
   &.error {
     color: #cb2f2f;
     border-color: rgba(203, 47, 47, 0.35);
@@ -114,11 +115,11 @@
   cursor: pointer;
   transition: border-color 220ms ease, background 220ms ease, transform 220ms ease;
 
+  // cuando es hover se hace mas pequeño como en la animacion de abajo
   &:hover {
-    border-color: #2b33bf;
-    background: #f2f5ff;
+    transform: scale(0.97);
+    transition: transform 220ms ease;
   }
-
   &.has-file {
     border-color: rgba(46, 170, 98, 0.6);
     background: rgba(46, 170, 98, 0.08);
@@ -153,6 +154,11 @@
   align-content: center;
   padding: 1.3rem 1rem;
   text-align: center;
+}
+
+.process-drop-zone.has-file:hover {
+  transform: scale(0.93);
+  transition: transform 300ms ease;
 }
 
 .drop-icon {
@@ -191,14 +197,19 @@
   font-size: 0.8rem;
   font-weight: 700;
   color: #2b33bf;
-
+ // si esta processing tiene un color gris
   &.processing {
-    color: #1f22a8;
+    color: #5e6a84;
   }
-
+// si esta correcto se pone azul
   &.success {
-    color: #258d52;
+    color: #2b33bf;
   }
+// si falla se pone rojo
+  &.error {
+    color: #cb2f2f;
+  }
+  
 }
 
 .actions-row {
@@ -225,14 +236,18 @@
     z-index: 1;
   }
 
+ 
+
   .btn-progress-fill {
     position: absolute;
     inset: 0;
     width: calc(var(--progress, 0) * 1%);
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(70, 221, 138, 0.95));
+    background: linear-gradient(90deg, rgba(20, 16, 143, 0.2), rgba(43, 51, 191, 0.1));
     transition: width 180ms ease;
     z-index: 0;
-  }
+    background-size: 200% 100%;
+}
+
 
   .btn-label {
     display: inline-flex;
@@ -249,6 +264,17 @@
     opacity: 0.55;
     cursor: not-allowed;
   }
+}
+
+// animacion de cuando el mouse pasa sobre el boton de validar y este tiene que hacer como efecto de que aumenta de tamaño el boton :
+.btn-validate:hover {
+  transform: scale(1.05);
+  transition: transform 300ms ease;
+}
+// y cuando se quite el mouse del boton de validar, este tiene que volver a su tamaño original : 
+.btn-validate:not(:hover) {
+  transform: scale(1);
+  transition: transform 300ms ease;
 }
 
 .error-banner {
@@ -513,3 +539,88 @@
     width: 100%;
   }
 }
+
+
+/*<section class="export-errors" *ngIf="reporteActual && !reporteActual.resumen.es_valida">
+        <div class="export-controls">
+          <label>Formato de exportación:</label>
+          <select [(ngModel)]="exportFormato" aria-label="Formato de exportación">
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel</option>
+          </select>
+        </div>
+        <button class="btn-export" type="button" (click)="descargarErrores()">
+          Descargar errores
+        </button>
+      </section>*/
+
+// los estilos para esa seccion html son .export-errors, .export-controls y .btn-export, acontinuacion se muestran los estilos para esos elementos:
+
+.export-errors {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 14px;
+  background: rgba(255, 58, 58, 0.1);
+  color: #cb2f2f;
+
+  .export-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    label {
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    select {
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      border: 1px solid #dbe1f0;
+      background: #fff;
+      color: #697792;
+      font-size: 0.88rem;
+
+      &:focus {
+        outline: none;
+        border-color: rgba(20, 16, 143, 0.4);
+        box-shadow: inset 0 0 0 1px rgba(20, 16, 143, 0.2);
+      }
+    }
+  } 
+}
+
+.btn-export {
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #14108f, #3241dd);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+
+  &:hover {
+    background: linear-gradient(135deg, #1b2740, #2b33bf);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+// animacion de cuando el mouse pasa sobre el boton de validar y este tiene que hacer como efecto de que aumenta de tamaño el boton :
+.btn-export:hover {
+  transform: scale(1.05);
+  transition: transform 300ms ease;
+}
+// y cuando se quite el mouse del boton de validar, este tiene que volver a su tamaño original : 
+.btn-export:not(:hover) {
+  transform: scale(1);
+  transition: transform 300ms ease;
+}
+  
