@@ -67,6 +67,20 @@
         </button>
       </div>
 
+      <!-- Nueva: UI de exportación de errores (solo si hay errores) -->
+      <section class="export-errors" *ngIf="reporteActual && !reporteActual.resumen.es_valida">
+        <div class="export-controls">
+          <label>Formato de exportación:</label>
+          <select [(ngModel)]="exportFormato" aria-label="Formato de exportación">
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel</option>
+          </select>
+        </div>
+        <button class="btn-export" type="button" (click)="descargarErrores()">
+          Descargar errores
+        </button>
+      </section>
+
       <section class="inline-report" #resumenAnalisis *ngIf="mostrarResumen && reporteActual as reporte">
         <div class="analysis-summary">
           <div>

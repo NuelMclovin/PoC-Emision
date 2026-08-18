@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Dict
 
 from pydantic import BaseModel
 
@@ -59,6 +59,12 @@ class ReporteValidacion(BaseModel):
     nombre_archivo: str
     resumen: ResumenValidacion
     resultados: list[ResultadoValidacion]
+
+    # Nuevos campos opcional para exportar errores con encabezados originales
+    encabezados: Optional[List[str]] = None
+    filas_con_errores: Optional[List[Dict[str, object]]] = None
+    offset_filas: Optional[int] = None
+
 
 
 # ─── Request/Response de auth mock ────────────────────────────────────────────

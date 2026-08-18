@@ -74,8 +74,39 @@ def validar_macro(
         len(df), len(errores), len(advertencias), resumen.es_valida,
     )
 
-    return ReporteValidacion(
+    # Construir encabezados y filas con errores (si df está disponible)
+    try:
+        encabezados = list(df.columns.tolist())
+    except Exception:
+        encabezados = None
+
+        # Filas con errores: recolecta filas donde exista al menos un ResultadoValidacion tipo ERROR
+    filas_con_errores: list[dict] = []
+    filas_con_indices = set()
+    for r in resultados:
+        if r.tipo == TipoError.ERROR and r.fila is not None:
+            filas_con_indices.add(int(r.fila))
+
+    # Mapear filas de df a diccionarios (si el índice existe)
+    if filas_con_indices:
+        offset = int(fila_offset) if fila_offset is not None else 0
+        # El mapeo intenta convertir el número de fila del Excel a índice de DataFrame
+        base = offset + 1  # asume header en 1, datos empiezan en 2 cuando offset=1
+        for fila_excel in sorted(filas_con_indices):
+            data_index = int(fila_excel) - base
+            if 0 <= data_index < len(df):
+                row = df.iloc[data_index].to_dict()
+                filas_con_errores.append({str(k): v for k, v in row.items()})
+    else:
+        filas_con_errores = []
+
+    reporte = ReporteValidacion(
         nombre_archivo=filename,
         resumen=resumen,
         resultados=resultados,
+        encabezados=encabezados,
+        filas_con_errores=filas_con_errores,
+        offset_filas=fila_offset,
     )
+
+    return reporte

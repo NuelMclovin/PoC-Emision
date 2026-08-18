@@ -10,6 +10,13 @@ from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
+from fastapi.responses import Response
+
+from starlette.responses import StreamingResponse
+from typing import Any, Dict, List
+
+from ..services.exporter import exportar_errores
+
 from ..models.macro_models import ReporteValidacion
 from ..services.macro_reader import leer_macro
 from ..services.validator import validar_macro
@@ -65,3 +72,29 @@ async def validar_macro_endpoint(
 
     # ✅ Pasar offset a validar_macro
     return validar_macro(filename, df, tipo_accion=tipo_accion, tipo_producto=tipo_producto, fila_offset=offset)
+
+
+@router.post("/export-errores")
+async def exportar_errores_endpoint(payload: Dict[str, Any]) -> Response:
+    """
+    payload expected:
+    {
+      "headers": ["col1","col2",...],
+      "filas": [ { "col1": val1, "col2": val2, ... }, ... ],
+      "format": "csv" | "xlsx",
+      "nombre_archivo": "nombre_origen.ext"
+    }
+    """
+    headers = payload.get("headers", [])
+    filas = payload.get("filas", [])
+    formato = payload.get("format", "csv")
+    nombre_archivo = payload.get("nombre_archivo", "errores")
+
+    if not headers or not filas:
+        return Response(status_code=400, content=b'Headers or rows missing')
+
+    data, mime, filename = exportar_errores(headers, filas, formato)
+
+    return Response(content=data, media_type=mime, headers={
+        "Content-Disposition": f'attachment; filename="{filename if filename else nombre_archivo}_errores.{("csv" if formato=="csv" else "xlsx")}"'
+    })

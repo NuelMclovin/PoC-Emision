@@ -5,15 +5,16 @@ import { Subscription, finalize, timeout } from 'rxjs';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
 import { CONFIGURACION_PROCESO, EXPEDIENTES_MOCK } from '../shared/portal-data';
 import { ReporteValidacion, ResultadoValidacion, TipoAccion, ValidacionService } from '../../services/validacion';
+import { FormsModule } from '@angular/forms';
 
 type EstadoRevision = 'idle' | 'analizando' | 'listo' | 'error';
 
 @Component({
   selector: 'app-gmm-proceso',
   standalone: true,
-  imports: [CommonModule, PortalShellComponent],
+  imports: [CommonModule, PortalShellComponent, FormsModule],
   templateUrl: './gmm-proceso.html',
-  styleUrl: './gmm-proceso.scss',
+  styleUrls: ['./gmm-proceso.scss'],
 })
 export class GmmProcesoComponent implements OnDestroy {
   @Input({ required: true }) tipoAccion: TipoAccion = 'nueva';
@@ -31,6 +32,11 @@ export class GmmProcesoComponent implements OnDestroy {
   arrastrandoArchivo = false;
   private temporizadorProgreso: ReturnType<typeof setInterval> | null = null;
   private solicitudActiva: Subscription | null = null;
+
+  // Nuevo para export
+  exportFormato: 'csv' | 'xlsx' = 'csv';
+  encabezados: string[] = [];
+  filasConErrores: any[] = [];
 
   constructor(private validacionSvc: ValidacionService) {}
 
@@ -83,11 +89,11 @@ export class GmmProcesoComponent implements OnDestroy {
   }
 
   get totalErrores(): number {
-    return this.reporteActual?.resultados.filter((resultado) => resultado.tipo === 'error').length ?? 0;
+    return this.reporteActual?.resultados.filter((resultado: ResultadoValidacion) => resultado.tipo === 'error').length ?? 0;
   }
 
   get totalAdvertencias(): number {
-    return this.reporteActual?.resultados.filter((resultado) => resultado.tipo === 'advertencia').length ?? 0;
+    return this.reporteActual?.resultados.filter((resultado: ResultadoValidacion) => resultado.tipo === 'advertencia').length ?? 0;
   }
 
   get resumenHallazgos(): string {
@@ -104,7 +110,7 @@ export class GmmProcesoComponent implements OnDestroy {
     }
 
     if (this.totalErrores > 0) {
-      return `Se encontraron ${this.totalErrores} errores en el analisis de la macro.`;
+      return `Se ${this.totalErrores} errores en el analisis de la macro.`;
     }
 
     return `Se encontraron ${this.totalAdvertencias} advertencias en el analisis de la macro.`;
@@ -213,6 +219,10 @@ export class GmmProcesoComponent implements OnDestroy {
           }
 
           this.reporteActual = reporte;
+          // Almacenar encabezados y filas con errores si existen
+          this.encabezados = reporte.encabezados ?? [];
+          this.filasConErrores = reporte.filas_con_errores ?? [];
+
           this.estadoRevision = 'listo';
           this.mostrarResumen = true;
           this.progresoValidacion = 100;
@@ -297,5 +307,34 @@ export class GmmProcesoComponent implements OnDestroy {
         block: 'start',
       });
     }, 0);
+  }
+
+  // Nueva: exportar errores
+  descargarErrores(): void {
+    console.log('Descargar errores iniciado', {
+    reporteActual: this.reporteActual?.nombre_archivo,
+    hayErrores: !!this.filasConErrores?.length,
+    encabezados: this.encabezados?.length
+    });
+    
+    if (!this.reporteActual || this.filasConErrores.length === 0) return;
+    const payload: any = {
+      headers: this.encabezados,
+      filas: this.filasConErrores,
+      format: this.exportFormato,
+      nombre_archivo: this.reporteActual?.nombre_archivo,
+    };
+    this.validacionSvc.exportarErrores(payload).subscribe((blob: Blob) => {
+      const mime = this.exportFormato === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = this.exportFormato === 'csv' ? 'csv' : 'xlsx';
+      a.download = `${this.reporteActual?.nombre_archivo ?? 'errores'}_errores.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    });
   }
 }
