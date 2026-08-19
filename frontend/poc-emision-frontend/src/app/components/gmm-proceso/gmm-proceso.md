@@ -8,6 +8,9 @@ import { ReporteValidacion, ResultadoValidacion, TipoAccion, ValidacionService }
 import { FormsModule } from '@angular/forms';
 
 type EstadoRevision = 'idle' | 'analizando' | 'listo' | 'error';
+// Nuevo tipo para las etapas del flujo de renovación
+type EtapaRenovacion = 'cargandoBase' | 'baseValidada' | 'cargandoNuevo' | 'comparando' | 'renovacionCompletada' | 'errorRenovacion';
+
 
 @Component({
   selector: 'app-gmm-proceso',
@@ -20,18 +23,32 @@ export class GmmProcesoComponent implements OnDestroy {
   @Input({ required: true }) tipoAccion: TipoAccion = 'nueva';
   @ViewChild('resumenAnalisis') resumenAnalisisRef?: ElementRef<HTMLElement>;
 
+  // --- Propiedades para el archivo "actual" o "nuevo" (el que se valida o compara) ---
   archivo: File | null = null;
   nombreArchivo = '';
   estadoRevision: EstadoRevision = 'idle';
   progresoValidacion = 0;
-  mensajeCarga = 'Carga un archivo para iniciar el analisis';
+  mensajeCarga = 'Carga un archivo para iniciar el analisis'; // Mensaje principal
   error = '';
   reporteActual: ReporteValidacion | null = null;
   mostrarResumen = false;
   filtroResultados: 'todos' | 'error' | 'advertencia' = 'todos';
   arrastrandoArchivo = false;
+
   private temporizadorProgreso: ReturnType<typeof setInterval> | null = null;
   private solicitudActiva: Subscription | null = null;
+
+  // --- NUEVAS PROPIEDADES ESPECÍFICAS PARA EL FLUJO DE RENOVACIÓN ---
+  archivoBase: File | null = null;
+  nombreArchivoBase = '';
+  reporteBase: ReporteValidacion | null = null;
+  estadoRevisionBase: EstadoRevision = 'idle';
+  progresoValidacionBase = 0;
+  errorBase = '';
+  mensajeCargaBase = 'Carga el archivo base para la renovación'; // Mensaje para el archivo base
+
+  // Controla la etapa actual del proceso de renovación
+  etapaRenovacion: EtapaRenovacion = 'cargandoBase';
 
   // Nuevo para export
   exportFormato: 'csv' | 'xlsx' = 'csv';
@@ -48,32 +65,61 @@ export class GmmProcesoComponent implements OnDestroy {
     return CONFIGURACION_PROCESO[this.tipoAccion];
   }
 
+  // Progreso para el archivo "actual" o "nuevo"
   get progresoBoton(): number {
     return Math.max(0, Math.min(100, this.progresoValidacion));
   }
 
-  get estaAnalizando(): boolean {
-    return this.estadoRevision === 'analizando';
+  // NUEVO: Progreso para el archivo base
+  get progresoBotonBase(): number {
+    return Math.max(0, Math.min(100, this.progresoValidacionBase));
   }
 
+  // Indica si algún análisis está en curso (ya sea del archivo base o del nuevo)
+  get estaAnalizando(): boolean {
+    if (this.tipoAccion === 'nueva') {
+      return this.estadoRevision === 'analizando';
+    }
+    return this.estadoRevisionBase === 'analizando' || this.estadoRevision === 'analizando';
+  }
+
+  // Indica si un archivo ha sido cargado (para el proceso actual)
   get archivoCargado(): boolean {
     return !!this.archivo;
   }
 
+  // NUEVO: Indica si el archivo base ha sido cargado
+  get archivoBaseCargado(): boolean {
+    return !!this.archivoBase;
+  }
+
+  // Mensaje de estado principal
   get estadoTexto(): string {
-    if (this.estadoRevision === 'analizando') {
-      return `Analizando datos ${this.progresoBoton}%`;
+    if (this.tipoAccion === 'nueva') {
+      if (this.estadoRevision === 'analizando') return `Analizando datos ${this.progresoBoton}%`;
+      if (this.estadoRevision === 'listo') return 'Análisis completado';
+      if (this.estadoRevision === 'error') return this.error || 'No se pudo completar el análisis';
+      return 'Carga un archivo para iniciar el análisis';
+    } else { // tipoAccion === 'renovacion'
+      switch (this.etapaRenovacion) {
+        case 'cargandoBase':
+          if (this.estadoRevisionBase === 'analizando') return `Analizando archivo base ${this.progresoBotonBase}%`;
+          if (this.estadoRevisionBase === 'error') return this.errorBase || 'Error en validación de archivo base';
+          return this.mensajeCargaBase; // "Carga el archivo base para la renovación"
+        case 'baseValidada':
+          if (this.estadoRevision === 'analizando') return `Analizando nuevo archivo ${this.progresoBoton}%`;
+          if (this.estadoRevision === 'error') return this.error || 'Error en validación del nuevo archivo';
+          return this.mensajeCarga; // "Archivo base validado. Carga el nuevo archivo de renovación."
+        case 'comparando':
+            return `Comparando archivos ${this.progresoBoton}%`;
+        case 'renovacionCompletada':
+          return 'Comparación de renovación completada';
+        case 'errorRenovacion':
+          return this.error || 'Error en el proceso de renovación';
+        default:
+          return 'Esperando inicio del proceso de renovación';
+      }
     }
-
-    if (this.estadoRevision === 'listo') {
-      return 'Analisis completado';
-    }
-
-    if (this.estadoRevision === 'error') {
-      return 'No se pudo completar el analisis';
-    }
-
-    return 'En espera de archivo';
   }
 
   get resultadosFiltrados(): ResultadoValidacion[] {
@@ -110,37 +156,68 @@ export class GmmProcesoComponent implements OnDestroy {
     }
 
     if (this.totalErrores > 0) {
-      return `Se ${this.totalErrores} errores en el analisis de la macro.`;
+      return `Se encontraron ${this.totalErrores} errores en el analisis de la macro.`;
     }
 
     return `Se encontraron ${this.totalAdvertencias} advertencias en el analisis de la macro.`;
   }
 
+  // Controla la habilitación del botón principal "Validar"
   get botonDeshabilitado(): boolean {
-    return !this.archivo || this.estaAnalizando;
+    if (this.estaAnalizando) {
+      return true; // Deshabilitar si cualquier análisis está en curso
+    }
+    if (this.tipoAccion === 'nueva') {
+      return !this.archivo;
+    } else { // tipoAccion === 'renovacion'
+      if (this.etapaRenovacion === 'cargandoBase') {
+        return !this.archivoBase;
+      }
+      if (this.etapaRenovacion === 'baseValidada') {
+        return !this.archivo; // Deshabilitado hasta que se cargue el nuevo archivo
+      }
+      // 'cargandoNuevo', 'comparando', 'renovacionCompletada', 'errorRenovacion'
+      return false; // El botón "Validar y Comparar" estará habilitado una vez que ambos estén cargados
+    }
   }
 
+  // Etiqueta del botón principal "Validar"
   get etiquetaBoton(): string {
     if (this.estaAnalizando) {
-      return `Analizando ${this.progresoBoton}%`;
+      // Mostrar el progreso del análisis actual
+      const progreso = (this.estadoRevisionBase === 'analizando' ? this.progresoBotonBase : this.progresoBoton);
+      return `Analizando ${progreso}%`;
     }
 
-    if (this.estadoRevision === 'listo') {
-      return 'Analizar de nuevo';
+    if (this.tipoAccion === 'nueva') {
+      return this.estadoRevision === 'listo' ? 'Analizar de nuevo' : 'Analizar datos';
+    } else { // tipoAccion === 'renovacion'
+      switch (this.etapaRenovacion) {
+        case 'cargandoBase':
+          return 'Validar archivo base';
+        case 'baseValidada':
+          return this.archivo ? 'Validar y comparar' : 'Carga el nuevo archivo';
+        case 'renovacionCompletada':
+        case 'errorRenovacion':
+          return 'Comparar de nuevo';
+        default:
+          return 'Iniciar renovación';
+      }
     }
-
-    return 'Analizar datos';
   }
 
   ngOnDestroy(): void {
-    this.detenerProgresoSimulado();
+    this.detenerProgresoSimulado(false); // Detener para archivo actual
+    this.detenerProgresoSimulado(true);  // Detener para archivo base
     this.cancelarSolicitudActiva();
   }
 
-  onArchivoSeleccionado(event: Event): void {
+  onArchivoSeleccionado(event: Event, esArchivoBase: boolean = false): void {
     const input = event.target as HTMLInputElement;
     if (input.files?.length) {
-      this.asignarArchivo(input.files[0]);
+      this.asignarArchivo(input.files[0], esArchivoBase);
+      // Resetear el input para permitir cargar el mismo archivo de nuevo si es necesario
+      input.value = '';
     }
   }
 
@@ -157,7 +234,7 @@ export class GmmProcesoComponent implements OnDestroy {
     this.arrastrandoArchivo = false;
   }
 
-  onDropArchivo(event: DragEvent): void {
+  onDropArchivo(event: DragEvent, esArchivoBase: boolean = false): void {
     if (this.estaAnalizando) {
       return;
     }
@@ -166,34 +243,220 @@ export class GmmProcesoComponent implements OnDestroy {
 
     const archivo = event.dataTransfer?.files?.[0];
     if (archivo) {
-      this.asignarArchivo(archivo);
+      this.asignarArchivo(archivo, esArchivoBase);
     }
   }
 
+  // Método principal que orquesta la validación
   validar(): void {
-    if (!this.archivo || this.estaAnalizando) {
-      return;
+    if (this.estaAnalizando) {
+        return; // No hacer nada si ya hay un análisis en curso
     }
 
+    if (this.tipoAccion === 'nueva') {
+      this.iniciarValidacionSimple();
+    } else if (this.tipoAccion === 'renovacion') {
+      this.iniciarFlujoRenovacion();
+    }
+  }
+
+  private iniciarValidacionSimple(): void {
+    if (!this.archivo) {
+      this.error = 'Por favor, carga un archivo para iniciar la validación.';
+      this.estadoRevision = 'error';
+      return;
+    }
+    this.ejecutarValidacion(this.archivo, false);
+  }
+
+  private iniciarFlujoRenovacion(): void {
+    switch (this.etapaRenovacion) {
+      case 'cargandoBase':
+        if (!this.archivoBase) {
+          this.errorBase = 'Por favor, carga el archivo base para la renovación.';
+          this.estadoRevisionBase = 'error';
+          return;
+        }
+        this.ejecutarValidacion(this.archivoBase, true);
+        break;
+      case 'baseValidada':
+        if (!this.archivo) {
+          this.error = 'Por favor, carga el nuevo archivo de renovación para comparar.';
+          this.estadoRevision = 'error';
+          return;
+        }
+        this.ejecutarComparacionRenovacion(this.archivo, this.archivoBase!);
+        break;
+      case 'renovacionCompletada':
+      case 'errorRenovacion':
+          // Si ya se completó o hubo un error, se puede re-ejecutar la comparación si ambos archivos están presentes
+          if (this.archivo && this.archivoBase) {
+            this.ejecutarComparacionRenovacion(this.archivo, this.archivoBase);
+          } else {
+            this.etapaRenovacion = 'cargandoBase'; // Reiniciar el flujo si no hay archivos
+            this.resetearEstados();
+          }
+          break;
+      default:
+        console.warn('Intento de validación de renovación en etapa inesperada:', this.etapaRenovacion);
+        this.error = 'Ocurrió un error inesperado en el flujo de renovación.';
+        this.estadoRevision = 'error';
+        this.etapaRenovacion = 'errorRenovacion';
+        break;
+    }
+  }
+
+  // Método unificado para ejecutar la validación de un archivo (ya sea base o nuevo)
+  private ejecutarValidacion(fileToValidate: File, isBaseFile: boolean): void {
     this.cancelarSolicitudActiva();
-    this.estadoRevision = 'analizando';
+
+    // Resetear estados relevantes
+    if (isBaseFile) {
+      this.estadoRevisionBase = 'analizando';
+      this.errorBase = '';
+      this.reporteBase = null;
+      this.progresoValidacionBase = 6;
+      this.mensajeCargaBase = `Cargandoarchivo base ${this.progresoBotonBase}%`;
+    } else {
+      this.estadoRevision = 'analizando';
+      this.error = '';
+      this.reporteActual = null;
+      this.mostrarResumen = false;
+      this.filtroResultados = 'todos';
+      this.progresoValidacion = 6;
+      this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
+    }
+    this.iniciarProgresoSimulado(isBaseFile);
+
+    this.solicitudActiva = this.validacionSvc.validarMacro(fileToValidate, this.tipoAccion, 'GMM').pipe(
+      timeout(120000),
+      finalize(() => {
+        this.detenerProgresoSimulado(isBaseFile);
+        const currentEstado = isBaseFile ? this.estadoRevisionBase : this.estadoRevision;
+        if (currentEstado === 'analizando') { // Si la solicitud se canceló o finalizó sin una respuesta de éxito
+          if (isBaseFile) {
+            this.estadoRevisionBase = 'error';
+            this.errorBase = 'La revisión del archivo base no pudo completarse. Intenta de nuevo.';
+            this.progresoValidacionBase = 0;
+            this.mensajeCargaBase = 'No se pudo completar el análisis del archivo base';
+            this.etapaRenovacion = 'errorRenovacion';
+          } else {
+            this.estadoRevision = 'error';
+            this.error = 'La revisión del nuevo archivo no pudo completarse. Intenta de nuevo.';
+            this.progresoValidacion = 0;
+            this.mensajeCarga = 'No se pudo completar el análisis del nuevo archivo';
+            this.etapaRenovacion = 'errorRenovacion';
+          }
+        }
+      }),
+    ).subscribe({
+      next: (evento) => {
+        if (evento.type === HttpEventType.UploadProgress) {
+          const total = evento.total ?? evento.loaded;
+          const porcentajeCarga = total > 0
+            ? Math.round((evento.loaded / total) * 70)
+            : Math.min(70, isBaseFile ? this.progresoValidacionBase : this.progresoValidacion + 5);
+
+          if (isBaseFile) {
+            this.progresoValidacionBase = Math.max(this.progresoValidacionBase, porcentajeCarga);
+            this.mensajeCargaBase = `Cargando archivo base ${this.progresoBotonBase}%`;
+          } else {
+            this.progresoValidacion = Math.max(this.progresoValidacion, porcentajeCarga);
+            this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
+          }
+          return;
+        }
+
+        if (evento.type === HttpEventType.Response) {
+          const reporte = (evento as HttpResponse<ReporteValidacion>).body;
+          if (!reporte) {
+            if (isBaseFile) {
+              this.estadoRevisionBase = 'error';
+              this.errorBase = 'La respuesta del servidor no incluye el resumen del análisis del archivo base.';
+              this.progresoValidacionBase = 0;
+              this.etapaRenovacion = 'errorRenovacion';
+            } else {
+              this.estadoRevision = 'error';
+              this.error = 'La respuesta del servidor no incluye el resumen del análisis del nuevo archivo.';
+              this.progresoValidacion = 0;
+              this.etapaRenovacion = 'errorRenovacion';
+            }
+            return;
+          }
+
+          if (isBaseFile) {
+            this.reporteBase = reporte;
+            if (reporte.resumen.total_errores > 0) {
+              this.estadoRevisionBase = 'error';
+              this.errorBase = 'El archivo base contiene errores y no puede ser usado para la renovación.';
+              this.etapaRenovacion = 'cargandoBase'; // Quedarse en esta etapa si la base es inválida
+            } else {
+              this.estadoRevisionBase = 'listo';
+              this.progresoValidacionBase = 100;
+              this.mensajeCargaBase = 'Análisis del archivo base completado';
+              this.etapaRenovacion = 'baseValidada'; // Mover a la siguiente etapa
+              this.mensajeCarga = 'Archivo base validado. Carga el nuevo archivo de renovación.'; // Actualizar mensaje principal
+            }
+          } else { // Validación del nuevo archivo (en modo "nueva" o después de comparar en "renovacion")
+            this.reporteActual = reporte;
+            this.encabezados = reporte.encabezados ?? [];
+            this.filasConErrores = reporte.filas_con_errores ?? [];
+
+            this.estadoRevision = 'listo';
+            this.mostrarResumen = true;
+            this.progresoValidacion = 100;
+            this.mensajeCarga = 'Análisis completado';
+            this.enfocarResumen();
+            // Si estábamos en flujo de renovación, ahora se completó
+            if (this.tipoAccion === 'renovacion') {
+                this.etapaRenovacion = 'renovacionCompletada';
+            }
+          }
+        }
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        if (isBaseFile) {
+          this.estadoRevisionBase = 'error';
+          this.errorBase = err?.error?.detail ?? 'No fue posible analizar el archivo base. Verifica e intenta de nuevo.';
+          this.progresoValidacionBase = 0;
+          this.mensajeCargaBase = 'No se pudo completar el análisis del archivo base';
+          this.etapaRenovacion = 'errorRenovacion';
+        } else {
+          this.estadoRevision = 'error';
+          this.mostrarResumen = false;
+          this.error = err?.error?.detail ?? 'No fue posible analizar el nuevo archivo. Verifica e intenta de nuevo.';
+          this.progresoValidacion = 0;
+          this.mensajeCarga = 'No se pudo completar el análisis del nuevo archivo';
+          this.etapaRenovacion = 'errorRenovacion';
+        }
+      },
+    });
+  }
+
+  // NUEVO: Método para ejecutar la comparación de archivos de renovación
+  private ejecutarComparacionRenovacion(archivoNuevo: File, archivoBase: File): void {
+    this.cancelarSolicitudActiva();
+
+    this.estadoRevision = 'analizando'; // El estado principal reflejará la comparación
     this.error = '';
     this.reporteActual = null;
     this.mostrarResumen = false;
     this.filtroResultados = 'todos';
     this.progresoValidacion = 6;
-    this.mensajeCarga = 'Cargando datos 8%';
-    this.iniciarProgresoSimulado();
+    this.mensajeCarga = 'Cargando y comparando archivos...';
+    this.etapaRenovacion = 'comparando';
+    this.iniciarProgresoSimulado(false); // Progreso para el archivo "nuevo" / comparación
 
-    this.solicitudActiva = this.validacionSvc.validarMacro(this.archivo, this.tipoAccion, 'GMM').pipe(
+    this.solicitudActiva = this.validacionSvc.validarYCompararMacro(archivoNuevo, archivoBase, this.tipoAccion, 'GMM').pipe(
       timeout(120000),
       finalize(() => {
-        this.detenerProgresoSimulado();
+        this.detenerProgresoSimulado(false);
         if (this.estadoRevision === 'analizando') {
           this.estadoRevision = 'error';
-          this.error = 'La revision no pudo completarse. Intenta de nuevo.';
+          this.error = 'La comparación no pudo completarse. Intenta de nuevo.';
           this.progresoValidacion = 0;
-          this.mensajeCarga = 'No se pudo completar el analisis';
+          this.mensajeCarga = 'No se pudo completar la comparación';
+          this.etapaRenovacion = 'errorRenovacion';
         }
       }),
     ).subscribe({
@@ -205,7 +468,7 @@ export class GmmProcesoComponent implements OnDestroy {
             : Math.min(70, this.progresoValidacion + 5);
 
           this.progresoValidacion = Math.max(this.progresoValidacion, porcentajeCarga);
-          this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
+          this.mensajeCarga = `Cargando y comparando ${this.progresoBoton}%`;
           return;
         }
 
@@ -213,30 +476,32 @@ export class GmmProcesoComponent implements OnDestroy {
           const reporte = (evento as HttpResponse<ReporteValidacion>).body;
           if (!reporte) {
             this.estadoRevision = 'error';
-            this.error = 'La respuesta del servidor no incluye el resumen del analisis.';
+            this.error = 'La respuesta del servidor no incluye el resumen de la comparación.';
             this.progresoValidacion = 0;
+            this.etapaRenovacion = 'errorRenovacion';
             return;
           }
 
           this.reporteActual = reporte;
-          // Almacenar encabezados y filas con errores si existen
           this.encabezados = reporte.encabezados ?? [];
           this.filasConErrores = reporte.filas_con_errores ?? [];
 
           this.estadoRevision = 'listo';
           this.mostrarResumen = true;
           this.progresoValidacion = 100;
-          this.mensajeCarga = 'Analisis completado';
+          this.mensajeCarga = 'Comparación completada';
           this.enfocarResumen();
+          this.etapaRenovacion = 'renovacionCompletada';
         }
       },
       error: (err: { error?: { detail?: string } }) => {
         this.estadoRevision = 'error';
         this.mostrarResumen = false;
-        this.error = err?.error?.detail ?? 'No fue posible analizar los datos. Verifica el archivo e intenta de nuevo.';
+        this.error = err?.error?.detail ?? 'No fue posible comparar los archivos. Verifica e intenta de nuevo.';
         this.progresoValidacion = 0;
-        this.mensajeCarga = 'No se pudo completar el analisis';
-      },
+        this.mensajeCarga = 'No se pudo completar la comparación';
+        this.etapaRenovacion = 'errorRenovacion';
+},
     });
   }
 
@@ -248,55 +513,89 @@ export class GmmProcesoComponent implements OnDestroy {
     return tipo === 'advertencia' ? 'advertencia' : 'error';
   }
 
-  private asignarArchivo(archivo: File): void {
-    this.cancelarSolicitudActiva();
-    this.archivo = archivo;
-    this.nombreArchivo = archivo.name;
-    this.error = '';
-    this.reporteActual = null;
-    this.mostrarResumen = false;
-    this.estadoRevision = 'idle';
-    this.progresoValidacion = 0;
-    this.mensajeCarga = 'Archivo cargado, iniciando analisis';
+  // Modificado para aceptar un flag `esArchivoBase`
+  private asignarArchivo(archivo: File, esArchivoBase: boolean): void {
+    this.cancelarSolicitudActiva(); // Cancela cualquier solicitud activa
+
+    if (esArchivoBase) {
+      this.archivoBase = archivo;
+      this.nombreArchivoBase = archivo.name;
+      this.errorBase = '';
+      this.reporteBase = null;
+      this.estadoRevisionBase = 'idle';
+      this.progresoValidacionBase = 0;
+      this.mensajeCargaBase = 'Archivo base cargado, listo para validar';
+      // Si se carga una nueva base, resetear el archivo "nuevo"
+      this.archivo = null;
+      this.nombreArchivo = '';
+      this.reporteActual = null;
+      this.estadoRevision = 'idle';
+      this.progresoValidacion = 0;
+      this.mensajeCarga = 'Carga el nuevo archivo de renovación';
+      this.etapaRenovacion = 'cargandoBase'; // Asegurarse de que estamos en la etapa correcta
+    } else { // Es el archivo de renovación (o el único archivo en modo 'nueva')
+      this.archivo = archivo;
+      this.nombreArchivo = archivo.name;
+      this.error = '';
+      this.reporteActual = null;
+      this.mostrarResumen = false;
+      this.estadoRevision = 'idle';
+      this.progresoValidacion = 0;
+      this.mensajeCarga = 'Archivo de renovación cargado, listo para validar/comparar';
+    }
     this.arrastrandoArchivo = false;
 
-    // El analisis inicia automaticamente al cargar el archivo.
-    this.validar();
+    // Si es "nueva", el análisis inicia automáticamente.
+    // Si es "renovación", el análisis/comparación se activa con el botón "Validar"
+    if (this.tipoAccion === 'nueva') {
+        this.validar();
+    }
   }
 
-  private iniciarProgresoSimulado(): void {
-    this.detenerProgresoSimulado();
+  // Modificado para aceptar un flag `esArchivoBase`
+  private iniciarProgresoSimulado(isBaseFile: boolean): void {
+    this.detenerProgresoSimulado(isBaseFile); // Asegurar que no haya otro temporizador corriendo
 
     this.temporizadorProgreso = setInterval(() => {
-      if (!this.estaAnalizando) {
-        this.detenerProgresoSimulado();
+      const currentEstaAnalizando = isBaseFile ? (this.estadoRevisionBase === 'analizando') : (this.estadoRevision === 'analizando');
+
+      if (!currentEstaAnalizando) {
+        this.detenerProgresoSimulado(isBaseFile);
         return;
       }
 
-      if (this.progresoValidacion < 78) {
-        this.progresoValidacion += 3;
-        this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
-        return;
-      }
-
-      if (this.progresoValidacion < 94) {
-        this.progresoValidacion += 1;
-        this.mensajeCarga = `Analizando datos ${this.progresoBoton}%`;
+      if (isBaseFile) {
+        if (this.progresoValidacionBase < 78) {
+          this.progresoValidacionBase += 3;
+          this.mensajeCargaBase = `Cargando archivo base ${this.progresoBotonBase}%`;
+        } else if (this.progresoValidacionBase < 94) {
+          this.progresoValidacionBase += 1;
+          this.mensajeCargaBase = `Analizando archivo base ${this.progresoBotonBase}%`;
+        }
+      } else { // No es archivo base (es el archivo nuevo o el único en modo 'nueva')
+        if (this.progresoValidacion < 78) {
+          this.progresoValidacion += 3;
+          this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
+        } else if (this.progresoValidacion < 94) {
+          this.progresoValidacion += 1;
+          this.mensajeCarga = `Analizando datos ${this.progresoBoton}%`;
+        }
       }
     }, 180);
+  }
+
+  // Modificado para aceptar un flag `isBaseFile`, aunque el temporizador es único
+  private detenerProgresoSimulado(isBaseFile: boolean): void {
+    if (this.temporizadorProgreso) {
+      clearInterval(this.temporizadorProgreso);
+      this.temporizadorProgreso = null;
+    }
   }
 
   private cancelarSolicitudActiva(): void {
     if (this.solicitudActiva) {
       this.solicitudActiva.unsubscribe();
       this.solicitudActiva = null;
-    }
-  }
-
-  private detenerProgresoSimulado(): void {
-    if (this.temporizadorProgreso) {
-      clearInterval(this.temporizadorProgreso);
-      this.temporizadorProgreso = null;
     }
   }
 
@@ -309,6 +608,36 @@ export class GmmProcesoComponent implements OnDestroy {
     }, 0);
   }
 
+  // NUEVO: Resetear todos los estados del componente
+  private resetearEstados(): void {
+    this.archivo = null;
+    this.nombreArchivo = '';
+    this.estadoRevision = 'idle';
+    this.progresoValidacion = 0;
+    this.mensajeCarga = 'Carga un archivo para iniciar el analisis';
+    this.error = '';
+    this.reporteActual = null;
+    this.mostrarResumen = false;
+    this.filtroResultados = 'todos';
+    this.arrastrandoArchivo = false;
+
+    this.archivoBase = null;
+    this.nombreArchivoBase = '';
+    this.reporteBase = null;
+    this.estadoRevisionBase = 'idle';
+    this.progresoValidacionBase = 0;
+    this.errorBase = '';
+    this.mensajeCargaBase = 'Carga el archivo base para la renovación';
+    this.etapaRenovacion = 'cargandoBase';
+
+    this.encabezados = [];
+    this.filasConErrores = [];
+    this.cancelarSolicitudActiva();
+    this.detenerProgresoSimulado(false);
+    this.detenerProgresoSimulado(true);
+  }
+
+
   // Nueva: exportar errores
   descargarErrores(): void {
     console.log('Descargar errores iniciado', {
@@ -316,7 +645,7 @@ export class GmmProcesoComponent implements OnDestroy {
     hayErrores: !!this.filasConErrores?.length,
     encabezados: this.encabezados?.length
     });
-    
+
     if (!this.reporteActual || this.filasConErrores.length === 0) return;
     const payload: any = {
       headers: this.encabezados,
