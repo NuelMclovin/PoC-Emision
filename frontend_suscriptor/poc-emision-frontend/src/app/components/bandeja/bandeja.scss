@@ -1,0 +1,244 @@
+:host {
+  display: block;
+}
+
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 143, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 18px 45px rgba(0, 0, 143, 0.08);
+  overflow: hidden;
+}
+
+.stat {
+  flex: 1 1 180px;
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid #edf1f7;
+  background: transparent;
+  padding: 1.2rem 1.3rem;
+  display: grid;
+  gap: 0.3rem;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: background 160ms ease;
+
+  &:first-child {
+    border-left: 0;
+  }
+
+  &:hover {
+    background: #f7f8fc;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(0, 0, 143, 0.35);
+    outline-offset: -2px;
+  }
+
+  &.active {
+    background: #f4f6ff;
+  }
+}
+
+.stat-value {
+  display: block;
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #00008f;
+}
+
+.stat-caption {
+  color: #697792;
+  font-size: 0.82rem;
+}
+
+.tone-red .stat-value {
+  color: #ff1721;
+}
+
+.tone-blue .stat-value {
+  color: #1d4ed8;
+}
+
+.tone-gold .stat-value {
+  color: #b97700;
+}
+
+.tone-purple .stat-value {
+  color: #7b45c5;
+}
+
+.stat-label {
+  color: #697792;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bandeja-section {
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 143, 0.08);
+  border-radius: 26px;
+  padding: 1.5rem;
+  box-shadow: 0 16px 38px rgba(0, 0, 143, 0.06);
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+
+  h2 {
+    font-size: 1.35rem;
+    color: #00008f;
+    margin-bottom: 0.2rem;
+  }
+
+  p {
+    color: #697792;
+  }
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.bandeja-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+
+  th,
+  td {
+    padding: 1rem 0.85rem;
+    text-align: left;
+    border-bottom: 1px solid #edf1f7;
+    font-size: 0.92rem;
+  }
+
+  th {
+    color: #697792;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  tbody tr {
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: rgba(0, 0, 143, 0.03);
+    }
+  }
+}
+
+.folio-cell {
+  color: #00008f;
+  font-weight: 700;
+  font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+
+  &.pendiente {
+    color: #b97700;
+    background: rgba(244, 165, 36, 0.12);
+    border-color: rgba(244, 165, 36, 0.22);
+  }
+
+  &.en-revision {
+    color: #1d4ed8;
+    background: rgba(29, 78, 216, 0.1);
+    border-color: rgba(29, 78, 216, 0.2);
+  }
+
+  &.observado {
+    color: #7b45c5;
+    background: rgba(123, 69, 197, 0.1);
+    border-color: rgba(123, 69, 197, 0.18);
+  }
+
+  &.aprobado {
+    color: #258d52;
+    background: rgba(46, 170, 98, 0.1);
+    border-color: rgba(46, 170, 98, 0.18);
+  }
+
+  &.rechazado {
+    color: #cb2f2f;
+    background: rgba(255, 23, 33, 0.1);
+    border-color: rgba(255, 23, 33, 0.2);
+  }
+}
+
+.table-action {
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  background: #ff1721;
+  color: #fff;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.table-hint {
+  color: #a2acc4;
+  font-size: 0.8rem;
+}
+
+.empty-state,
+.error-state {
+  padding: 1.5rem;
+  border-radius: 16px;
+  text-align: center;
+  color: #697792;
+  background: #f7f8fc;
+}
+
+.error-state {
+  color: #cb2f2f;
+  background: rgba(255, 23, 33, 0.08);
+}
+
+@media (max-width: 1100px) {
+  .stat {
+    flex-basis: 33.333%;
+  }
+}
+
+@media (max-width: 820px) {
+  .section-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stat-strip {
+    flex-direction: column;
+  }
+
+  .stat {
+    flex-basis: auto;
+    border-left: 0;
+    border-top: 1px solid #edf1f7;
+
+    &:first-child {
+      border-top: 0;
+    }
+  }
+}

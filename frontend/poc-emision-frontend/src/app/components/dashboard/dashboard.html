@@ -1,25 +1,32 @@
 <app-portal-shell
   titulo="Dashboard de Emision"
+  subtitulo="Tus expedientes enviados a suscripción y su estatus"
   [totalAbiertos]="totalAbiertos"
   seccionActiva="dashboard">
-  <section class="summary-grid">
-    <article class="summary-card accent-red">
-      <span class="summary-label">Abiertos actualmente</span>
-      <strong>{{ totalAbiertos }}</strong>
-      <small>Expedientes activos en seguimiento</small>
-    </article>
+  <section class="stat-strip" role="tablist" aria-label="Filtrar expedientes por estatus">
+    <button type="button" class="stat tone-red" role="tab" [attr.aria-selected]="filtro === 'abiertos'" [class.active]="filtro === 'abiertos'" (click)="setFiltro(filtro === 'abiertos' ? 'todos' : 'abiertos')">
+      <span class="stat-label">Abiertos actualmente</span>
+      <strong class="stat-value">{{ totalAbiertos }}</strong>
+      <span class="stat-caption">Expedientes activos en seguimiento</span>
+    </button>
 
-    <article class="summary-card accent-blue">
-      <span class="summary-label">Nueva GMM</span>
-      <strong>{{ abiertosNueva }}</strong>
-      <small>Cotizaciones nuevas en curso</small>
-    </article>
+    <button type="button" class="stat tone-blue" role="tab" [attr.aria-selected]="filtro === 'nueva'" [class.active]="filtro === 'nueva'" (click)="setFiltro(filtro === 'nueva' ? 'todos' : 'nueva')">
+      <span class="stat-label">Nueva GMM</span>
+      <strong class="stat-value">{{ abiertosNueva }}</strong>
+      <span class="stat-caption">Cotizaciones nuevas en curso</span>
+    </button>
 
-    <article class="summary-card accent-gold">
-      <span class="summary-label">Renovacion GMM</span>
-      <strong>{{ abiertosRenovacion }}</strong>
-      <small>Renovaciones pendientes o en revision</small>
-    </article>
+    <button type="button" class="stat tone-gold" role="tab" [attr.aria-selected]="filtro === 'renovacion'" [class.active]="filtro === 'renovacion'" (click)="setFiltro(filtro === 'renovacion' ? 'todos' : 'renovacion')">
+      <span class="stat-label">Renovación GMM</span>
+      <strong class="stat-value">{{ abiertosRenovacion }}</strong>
+      <span class="stat-caption">Renovaciones pendientes o en revisión</span>
+    </button>
+
+    <button type="button" class="stat tone-purple" role="tab" [attr.aria-selected]="filtro === 'observado'" [class.active]="filtro === 'observado'" (click)="setFiltro(filtro === 'observado' ? 'todos' : 'observado')">
+      <span class="stat-label">Observados</span>
+      <strong class="stat-value">{{ observados }}</strong>
+      <span class="stat-caption">Requieren corrección antes de continuar</span>
+    </button>
   </section>
 
   <section class="widgets-section">
@@ -61,13 +68,17 @@
     <div class="section-heading history-heading">
       <div>
         <h2>Historial de expedientes</h2>
-        <p>Seguimiento rapido de los casos recientes en nueva emision y renovacion.</p>
+        <p>Seguimiento de los folios enviados a suscripción y su resolución.</p>
+        <button type="button" class="active-filter-chip" *ngIf="filtro !== 'todos'" (click)="setFiltro('todos')">
+          Filtrando: {{ filtro === 'abiertos' ? 'Abiertos' : filtro === 'nueva' ? 'Nueva GMM' : filtro === 'renovacion' ? 'Renovación GMM' : 'Observados' }}
+          <span aria-hidden="true">✕</span>
+        </button>
       </div>
       <button class="primary-action" type="button" (click)="abrirProceso('nueva')">Nuevo expediente</button>
     </div>
 
-    <div class="history-table-wrapper">
-      <table class="history-table">
+    <div class="history-table-wrapper" *ngIf="!cargando && !error">
+      <table class="history-table" *ngIf="casosFiltrados.length > 0; else sinExpedientes">
         <thead>
           <tr>
             <th>Folio</th>
@@ -80,23 +91,30 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let expediente of expedientes">
-            <td class="folio-cell">{{ expediente.folio }}</td>
-            <td>{{ expediente.empresa }}</td>
-            <td>{{ expediente.tipo }}</td>
-            <td>{{ expediente.asegurados }}</td>
+          <tr *ngFor="let caso of casosFiltrados">
+            <td class="folio-cell">{{ caso.folio }}</td>
+            <td>{{ caso.empresa }}</td>
+            <td>{{ caso.tipo_accion === 'nueva' ? 'GMM Nueva' : 'GMM Renovacion' }}</td>
+            <td>{{ caso.total_registros }}</td>
             <td>
-              <span class="status-pill" [ngClass]="estadoClase(expediente.estado)">
-                {{ expediente.estado }}
+              <span class="status-pill" [ngClass]="estadoClase(caso.estado)">
+                {{ caso.estado }}
               </span>
             </td>
-            <td>{{ expediente.actualizado }}</td>
+            <td>{{ caso.fecha_actualizacion | date: 'dd/MM/yyyy HH:mm' }}</td>
             <td>
-              <button class="table-action" type="button" (click)="verExpediente(expediente)">Ver</button>
+              <button class="table-action" type="button" (click)="verExpediente(caso)">Ver</button>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <ng-template #sinExpedientes>
+        <div class="empty-state">No has enviado expedientes a suscripción todavía.</div>
+      </ng-template>
     </div>
+
+    <div class="empty-state" *ngIf="cargando">Cargando expedientes…</div>
+    <div class="error-state" *ngIf="error">{{ error }}</div>
   </section>
 </app-portal-shell>

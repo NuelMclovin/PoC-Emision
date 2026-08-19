@@ -23,7 +23,15 @@ export class LoginComponent {
     this.error = '';
     this.loading = true;
     this.auth.login(this.username, this.password).subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => {
+        if (this.auth.getRol() !== 'broker') {
+          this.auth.logout();
+          this.error = 'Esta cuenta no tiene acceso al portal de bróker.';
+          this.loading = false;
+          return;
+        }
+        this.router.navigate(['/dashboard']);
+      },
       error: () => {
         this.error = 'Usuario o contraseña incorrectos.';
         this.loading = false;

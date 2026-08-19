@@ -28,6 +28,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./components/reporte/reporte').then(m => m.ReporteComponent),
       },
+      {
+        path: 'expediente/:folio',
+        loadComponent: () =>
+          import('./components/expediente-detalle/expediente-detalle').then(m => m.ExpedienteDetalleComponent),
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'validacion', redirectTo: 'dashboard', pathMatch: 'full' },
     ],

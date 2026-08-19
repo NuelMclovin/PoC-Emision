@@ -13,14 +13,7 @@ FROM nginx:1.27-alpine
 
 COPY --from=builder /app/dist/poc-emision-frontend/browser /usr/share/nginx/html
 
-# Configuración para SPA (redirigir todas las rutas al index.html)
-RUN echo 'server { \
-    listen 80; \
-    location / { \
-        root /usr/share/nginx/html; \
-        index index.html; \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# Configuración para SPA + proxy de /api hacia el backend (ver nginx.conf).
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

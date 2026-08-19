@@ -151,6 +151,38 @@
             No hay resultados para el filtro seleccionado.
           </div>
         </ng-template>
+
+        <div class="envio-suscripcion">
+          <div class="envio-copy">
+            <h4>Enviar expediente a suscripción</h4>
+            <p>El bróker envía el censo validado al suscriptor interno, quien revisará el expediente completo (reporte y documentos) para resolverlo.</p>
+          </div>
+
+          <div class="envio-form">
+            <div class="field">
+              <label for="empresa">Empresa / Contratante</label>
+              <input
+                id="empresa"
+                type="text"
+                [(ngModel)]="empresa"
+                name="empresa"
+                placeholder="Razón social del contratante"
+                [disabled]="enviando"
+                autocomplete="off" />
+            </div>
+
+            <button
+              class="btn-enviar"
+              type="button"
+              [disabled]="!puedeEnviar"
+              (click)="enviarASuscripcion()">
+              {{ enviando ? 'Enviando…' : 'Enviar a suscripción' }}
+            </button>
+          </div>
+
+          <div class="error-banner" *ngIf="envioError">{{ envioError }}</div>
+          <div class="envio-ok" *ngIf="folioCreado">Expediente {{ folioCreado }} enviado a suscripción.</div>
+        </div>
       </section>
 
       <div class="error-banner" *ngIf="error">

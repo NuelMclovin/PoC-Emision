@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .routers import auth_router, validacion_router
+from .routers import auth_router, casos_router, validacion_router
 from .utils.logger import get_logger
 
 logger = get_logger()
@@ -13,6 +13,7 @@ settings = get_settings()
 
 def create_app() -> FastAPI:
     settings.ensure_upload_dir()
+    settings.ensure_data_dirs()
 
     app = FastAPI(
         title="Portal de Validación de Emisión — AXA PoC",
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router.router)
     app.include_router(validacion_router.router)
+    app.include_router(casos_router.router)
 
     @app.get("/health", tags=["sistema"])
     async def health():

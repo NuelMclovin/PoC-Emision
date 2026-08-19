@@ -1,0 +1,70 @@
+<app-portal-shell
+  titulo="Historial de expedientes"
+  subtitulo="Casos ya resueltos: aprobados o rechazados"
+  [totalAbiertos]="0"
+  seccionActiva="historial">
+  <section class="stat-strip" role="tablist" aria-label="Filtrar historial por resolución">
+    <button type="button" class="stat tone-all" role="tab" [attr.aria-selected]="filtro === 'todos'" [class.active]="filtro === 'todos'" (click)="setFiltro('todos')">
+      <span class="stat-label">Todos</span>
+      <strong class="stat-value">{{ casos.length }}</strong>
+      <span class="stat-caption">Expedientes resueltos</span>
+    </button>
+
+    <button type="button" class="stat tone-blue" role="tab" [attr.aria-selected]="filtro === 'aprobado'" [class.active]="filtro === 'aprobado'" (click)="setFiltro('aprobado')">
+      <span class="stat-label">Aprobados</span>
+      <strong class="stat-value">{{ aprobados }}</strong>
+      <span class="stat-caption">Expedientes conformes</span>
+    </button>
+
+    <button type="button" class="stat tone-red" role="tab" [attr.aria-selected]="filtro === 'rechazado'" [class.active]="filtro === 'rechazado'" (click)="setFiltro('rechazado')">
+      <span class="stat-label">Rechazados</span>
+      <strong class="stat-value">{{ rechazados }}</strong>
+      <span class="stat-caption">Expedientes no conformes</span>
+    </button>
+  </section>
+
+  <section class="historial-section">
+    <div class="section-heading">
+      <div>
+        <h2>Resueltos</h2>
+        <p>Consulta el detalle, el comentario de resolución y los documentos de cada expediente.</p>
+      </div>
+    </div>
+
+    <div class="table-wrapper" *ngIf="!cargando && !error">
+      <table class="historial-table" *ngIf="casosFiltrados.length > 0; else sinCasos">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Empresa</th>
+            <th>Tipo</th>
+            <th>Bróker</th>
+            <th>Estado</th>
+            <th>Resuelto por</th>
+            <th>Actualización</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let caso of casosFiltrados" (click)="verCaso(caso)">
+            <td class="folio-cell">{{ caso.folio }}</td>
+            <td>{{ caso.empresa }}</td>
+            <td>{{ caso.tipo_accion === 'nueva' ? 'GMM Nueva' : 'GMM Renovacion' }}</td>
+            <td>{{ caso.creado_por }}</td>
+            <td>
+              <span class="status-pill" [ngClass]="estadoClase(caso.estado)">{{ caso.estado }}</span>
+            </td>
+            <td>{{ caso.asignado_a || '—' }}</td>
+            <td>{{ caso.fecha_actualizacion | date: 'dd/MM/yyyy HH:mm' }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ng-template #sinCasos>
+        <div class="empty-state">Aún no hay expedientes resueltos.</div>
+      </ng-template>
+    </div>
+
+    <div class="empty-state" *ngIf="cargando">Cargando historial…</div>
+    <div class="error-state" *ngIf="error">{{ error }}</div>
+  </section>
+</app-portal-shell>

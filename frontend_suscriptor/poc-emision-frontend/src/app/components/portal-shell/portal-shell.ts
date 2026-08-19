@@ -14,7 +14,7 @@ import { SeccionPortal } from '../shared/portal-data';
 export class PortalShellComponent {
   @Input({ required: true }) titulo = '';
   @Input() subtitulo = '';
-  @Input({ required: true }) seccionActiva: SeccionPortal = 'dashboard';
+  @Input({ required: true }) seccionActiva: SeccionPortal = 'bandeja';
   @Input() totalAbiertos = 0;
 
   menuColapsado = false;
@@ -25,7 +25,7 @@ export class PortalShellComponent {
   ) {}
 
   get username(): string {
-    return this.auth.getUsername();
+    return this.auth.getNombre();
   }
 
   toggleMenu(): void {
@@ -33,13 +33,7 @@ export class PortalShellComponent {
   }
 
   irASeccion(vista: SeccionPortal): void {
-    const destino = vista === 'dashboard'
-      ? '/dashboard'
-      : vista === 'nueva'
-        ? '/gmm/nueva'
-        : '/gmm/renovacion';
-
-    this.router.navigate([destino]);
+    this.router.navigate([vista === 'bandeja' ? '/bandeja' : '/historial']);
   }
 
   logout(): void {

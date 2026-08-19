@@ -9,27 +9,21 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
-        path: 'dashboard',
+        path: 'bandeja',
         loadComponent: () =>
-          import('./components/dashboard/dashboard').then(m => m.DashboardComponent),
+          import('./components/bandeja/bandeja').then(m => m.BandejaComponent),
       },
       {
-        path: 'gmm/nueva',
+        path: 'historial',
         loadComponent: () =>
-          import('./components/nueva-gmm/nueva-gmm').then(m => m.NuevaGmmComponent),
+          import('./components/historial/historial').then(m => m.HistorialComponent),
       },
       {
-        path: 'gmm/renovacion',
+        path: 'caso/:folio',
         loadComponent: () =>
-          import('./components/renovacion-gmm/renovacion-gmm').then(m => m.RenovacionGmmComponent),
+          import('./components/caso-detalle/caso-detalle').then(m => m.CasoDetalleComponent),
       },
-      {
-        path: 'reporte',
-        loadComponent: () =>
-          import('./components/reporte/reporte').then(m => m.ReporteComponent),
-      },
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'validacion', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: 'bandeja', pathMatch: 'full' },
     ],
   },
   { path: '**', redirectTo: 'login' },

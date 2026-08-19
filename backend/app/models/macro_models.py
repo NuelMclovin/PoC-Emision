@@ -72,3 +72,5 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     username: str
+    rol: Literal["broker", "suscriptor"] = "broker"
+    nombre: str = ""

@@ -12,6 +12,9 @@ services:
       - ./backend/.env
     volumes:
       - ./backend/tmp:/app/tmp
+      # Storage local de la PoC (CSV de casos + volumen de documentos por folio),
+      # compartido entre el frontend de bróker y el de suscriptor vía el backend.
+      - ./backend/data:/app/data
     restart: unless-stopped
 
   frontend:
@@ -21,6 +24,17 @@ services:
     container_name: poc-emision-frontend
     ports:
       - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  frontend-suscriptor:
+    build:
+      context: ./frontend_suscriptor/poc-emision-frontend
+      dockerfile: Dockerfile
+    container_name: poc-emision-frontend-suscriptor
+    ports:
+      - "4201:80"
     depends_on:
       - backend
     restart: unless-stopped

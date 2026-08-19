@@ -1,0 +1,91 @@
+<app-portal-shell
+  titulo="Bandeja de revisión"
+  subtitulo="Expedientes enviados por brokers, pendientes de revisión y resolución"
+  [totalAbiertos]="totalAbiertos"
+  seccionActiva="bandeja">
+  <section class="stat-strip" role="tablist" aria-label="Filtrar bandeja por estatus">
+    <button type="button" class="stat tone-all" role="tab" [attr.aria-selected]="tab === 'todos'" [class.active]="tab === 'todos'" (click)="setTab('todos')">
+      <span class="stat-label">Todos</span>
+      <strong class="stat-value">{{ casos.length }}</strong>
+      <span class="stat-caption">Total de casos abiertos</span>
+    </button>
+
+    <button type="button" class="stat tone-gold" role="tab" [attr.aria-selected]="tab === 'pendiente'" [class.active]="tab === 'pendiente'" (click)="setTab('pendiente')">
+      <span class="stat-label">Pendientes</span>
+      <strong class="stat-value">{{ pendientes.length }}</strong>
+      <span class="stat-caption">Aún sin tomar</span>
+    </button>
+
+    <button type="button" class="stat tone-blue" role="tab" [attr.aria-selected]="tab === 'en-revision'" [class.active]="tab === 'en-revision'" (click)="setTab('en-revision')">
+      <span class="stat-label">En revisión</span>
+      <strong class="stat-value">{{ enRevision.length }}</strong>
+      <span class="stat-caption">Actualmente en análisis</span>
+    </button>
+
+    <button type="button" class="stat tone-purple" role="tab" [attr.aria-selected]="tab === 'observado'" [class.active]="tab === 'observado'" (click)="setTab('observado')">
+      <span class="stat-label">Observados</span>
+      <strong class="stat-value">{{ observados.length }}</strong>
+      <span class="stat-caption">Con corrección solicitada</span>
+    </button>
+
+    <button type="button" class="stat tone-red" role="tab" [attr.aria-selected]="tab === 'mios'" [class.active]="tab === 'mios'" (click)="setTab('mios')">
+      <span class="stat-label">Asignados a mí</span>
+      <strong class="stat-value">{{ misAsignados.length }}</strong>
+      <span class="stat-caption">Casos que estoy revisando</span>
+    </button>
+  </section>
+
+  <section class="bandeja-section">
+    <div class="section-heading">
+      <div>
+        <h2>Casos abiertos</h2>
+        <p>Filtra por estatus o toma un caso pendiente directamente desde la tabla.</p>
+      </div>
+    </div>
+
+    <div class="table-wrapper" *ngIf="!cargando && !error">
+      <table class="bandeja-table" *ngIf="casosFiltrados.length > 0; else sinCasos">
+        <thead>
+          <tr>
+            <th>Folio</th>
+            <th>Empresa</th>
+            <th>Tipo</th>
+            <th>Bróker</th>
+            <th>Asegurados</th>
+            <th>Estado</th>
+            <th>Asignado a</th>
+            <th>Actualización</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let caso of casosFiltrados" (click)="verCaso(caso)">
+            <td class="folio-cell">{{ caso.folio }}</td>
+            <td>{{ caso.empresa }}</td>
+            <td>{{ caso.tipo_accion === 'nueva' ? 'GMM Nueva' : 'GMM Renovacion' }}</td>
+            <td>{{ caso.creado_por }}</td>
+            <td>{{ caso.total_registros }}</td>
+            <td>
+              <span class="status-pill" [ngClass]="estadoClase(caso.estado)">{{ caso.estado }}</span>
+            </td>
+            <td>{{ caso.asignado_a || '—' }}</td>
+            <td>{{ caso.fecha_actualizacion | date: 'dd/MM/yyyy HH:mm' }}</td>
+            <td>
+              <button class="table-action" type="button" *ngIf="caso.estado === 'Pendiente'" (click)="tomarCaso(caso, $event)">
+                Tomar caso
+              </button>
+              <span class="table-hint" *ngIf="caso.estado !== 'Pendiente'">Ver detalle →</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <ng-template #sinCasos>
+        <div class="empty-state">No hay casos en este filtro.</div>
+      </ng-template>
+    </div>
+
+    <div class="empty-state" *ngIf="cargando">Cargando bandeja…</div>
+    <div class="error-state" *ngIf="error">{{ error }}</div>
+  </section>
+</app-portal-shell>

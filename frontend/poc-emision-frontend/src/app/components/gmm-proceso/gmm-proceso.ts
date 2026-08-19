@@ -1,21 +1,25 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Input, OnDestroy, ViewChild } from '@angular/core';
+import { Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { HttpEventType, HttpResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { Subscription, finalize, timeout } from 'rxjs';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
-import { CONFIGURACION_PROCESO, EXPEDIENTES_MOCK } from '../shared/portal-data';
+import { CONFIGURACION_PROCESO } from '../shared/portal-data';
 import { ReporteValidacion, ResultadoValidacion, TipoAccion, ValidacionService } from '../../services/validacion';
+import { CasosService, ESTADOS_CERRADOS } from '../../services/casos';
+import { AuthService } from '../../services/auth';
 
 type EstadoRevision = 'idle' | 'analizando' | 'listo' | 'error';
 
 @Component({
   selector: 'app-gmm-proceso',
   standalone: true,
-  imports: [CommonModule, PortalShellComponent],
+  imports: [CommonModule, FormsModule, PortalShellComponent],
   templateUrl: './gmm-proceso.html',
   styleUrl: './gmm-proceso.scss',
 })
-export class GmmProcesoComponent implements OnDestroy {
+export class GmmProcesoComponent implements OnInit, OnDestroy {
   @Input({ required: true }) tipoAccion: TipoAccion = 'nueva';
   @ViewChild('resumenAnalisis') resumenAnalisisRef?: ElementRef<HTMLElement>;
 
@@ -29,13 +33,33 @@ export class GmmProcesoComponent implements OnDestroy {
   mostrarResumen = false;
   filtroResultados: 'todos' | 'error' | 'advertencia' = 'todos';
   arrastrandoArchivo = false;
+  totalAbiertos = 0;
+
+  // Envío del expediente a suscripción interna, una vez validado localmente.
+  empresa = '';
+  enviando = false;
+  envioError = '';
+  folioCreado: string | null = null;
+
   private temporizadorProgreso: ReturnType<typeof setInterval> | null = null;
   private solicitudActiva: Subscription | null = null;
 
-  constructor(private validacionSvc: ValidacionService) {}
+  constructor(
+    private validacionSvc: ValidacionService,
+    private casosSvc: CasosService,
+    private auth: AuthService,
+    private router: Router,
+  ) {}
 
-  get totalAbiertos(): number {
-    return EXPEDIENTES_MOCK.filter((expediente) => expediente.estado !== 'Completado').length;
+  ngOnInit(): void {
+    this.casosSvc.listarCasos({ creado_por: this.auth.getUsername() }).subscribe({
+      next: (casos) => {
+        this.totalAbiertos = casos.filter((c) => !ESTADOS_CERRADOS.includes(c.estado)).length;
+      },
+      error: () => {
+        this.totalAbiertos = 0;
+      },
+    });
   }
 
   get configuracionActual() {
@@ -126,6 +150,10 @@ export class GmmProcesoComponent implements OnDestroy {
     return 'Analizar datos';
   }
 
+  get puedeEnviar(): boolean {
+    return !!this.archivo && !!this.empresa.trim() && this.estadoRevision === 'listo' && !this.enviando;
+  }
+
   ngOnDestroy(): void {
     this.detenerProgresoSimulado();
     this.cancelarSolicitudActiva();
@@ -177,6 +205,8 @@ export class GmmProcesoComponent implements OnDestroy {
     this.filtroResultados = 'todos';
     this.progresoValidacion = 6;
     this.mensajeCarga = 'Cargando datos 8%';
+    this.folioCreado = null;
+    this.envioError = '';
     this.iniciarProgresoSimulado();
 
     this.solicitudActiva = this.validacionSvc.validarMacro(this.archivo, this.tipoAccion, 'GMM').pipe(
@@ -238,6 +268,27 @@ export class GmmProcesoComponent implements OnDestroy {
     return tipo === 'advertencia' ? 'advertencia' : 'error';
   }
 
+  enviarASuscripcion(): void {
+    if (!this.puedeEnviar || !this.archivo) {
+      return;
+    }
+
+    this.enviando = true;
+    this.envioError = '';
+
+    this.casosSvc.crearCaso(this.archivo, this.empresa.trim(), this.tipoAccion, 'GMM').subscribe({
+      next: (caso) => {
+        this.enviando = false;
+        this.folioCreado = caso.folio;
+        this.router.navigate(['/expediente', caso.folio]);
+      },
+      error: (err: { error?: { detail?: string } }) => {
+        this.enviando = false;
+        this.envioError = err?.error?.detail ?? 'No fue posible enviar el expediente a suscripción.';
+      },
+    });
+  }
+
   private asignarArchivo(archivo: File): void {
     this.cancelarSolicitudActiva();
     this.archivo = archivo;
@@ -249,6 +300,8 @@ export class GmmProcesoComponent implements OnDestroy {
     this.progresoValidacion = 0;
     this.mensajeCarga = 'Archivo cargado, iniciando analisis';
     this.arrastrandoArchivo = false;
+    this.folioCreado = null;
+    this.envioError = '';
 
     // El analisis inicia automaticamente al cargar el archivo.
     this.validar();

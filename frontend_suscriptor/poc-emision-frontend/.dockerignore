@@ -1,0 +1,11 @@
+node_modules
+dist
+.angular
+.git
+
+# Carpeta con componentes viejos/rotos del rediseño a portal de suscriptor.
+# El bridge usado para escribir en el disco del usuario no puede borrar
+# archivos, así que quedaron movidos aquí en vez de eliminados. Se excluyen
+# del build de Docker (y del compilador, ver tsconfig.app.json) para que no
+# rompan `npm run build`. Se pueden borrar manualmente cuando se quiera.
+src/app/components/_to_delete

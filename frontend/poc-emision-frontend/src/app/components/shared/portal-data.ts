@@ -1,16 +1,6 @@
 import { TipoAccion } from '../../services/validacion';
 
 export type SeccionPortal = 'dashboard' | 'nueva' | 'renovacion';
-export type EstadoExpediente = 'En proceso' | 'Pendiente' | 'En revision' | 'Completado';
-
-export interface Expediente {
-  folio: string;
-  empresa: string;
-  tipo: 'GMM Nueva' | 'GMM Renovacion';
-  asegurados: number;
-  estado: EstadoExpediente;
-  actualizado: string;
-}
 
 export interface ConfiguracionProceso {
   titulo: string;
@@ -21,49 +11,6 @@ export interface ConfiguracionProceso {
   nota: string;
   subtipo: 'GMM Nueva' | 'GMM Renovacion';
 }
-
-export const EXPEDIENTES_MOCK: Expediente[] = [
-  {
-    folio: 'FOL-2026-0031',
-    empresa: 'Grupo Industrial Alfa',
-    tipo: 'GMM Nueva',
-    asegurados: 148,
-    estado: 'En proceso',
-    actualizado: 'Hoy, 09:40',
-  },
-  {
-    folio: 'FOL-2026-0030',
-    empresa: 'Servicios Delta',
-    tipo: 'GMM Renovacion',
-    asegurados: 96,
-    estado: 'Pendiente',
-    actualizado: 'Hoy, 08:15',
-  },
-  {
-    folio: 'FOL-2026-0029',
-    empresa: 'Corporativo Nativa',
-    tipo: 'GMM Nueva',
-    asegurados: 204,
-    estado: 'En revision',
-    actualizado: 'Ayer, 18:20',
-  },
-  {
-    folio: 'FOL-2026-0028',
-    empresa: 'Transportes del Bajio',
-    tipo: 'GMM Renovacion',
-    asegurados: 121,
-    estado: 'Completado',
-    actualizado: 'Ayer, 16:05',
-  },
-  {
-    folio: 'FOL-2026-0027',
-    empresa: 'Manufactura Solis',
-    tipo: 'GMM Nueva',
-    asegurados: 77,
-    estado: 'En proceso',
-    actualizado: 'Ayer, 11:32',
-  },
-];
 
 export const CONFIGURACION_PROCESO: Record<TipoAccion, ConfiguracionProceso> = {
   nueva: {
@@ -101,7 +48,3 @@ export const CONFIGURACION_PROCESO: Record<TipoAccion, ConfiguracionProceso> = {
     subtipo: 'GMM Renovacion',
   },
 };
-
-export function estadoClase(estado: EstadoExpediente): string {
-  return estado.toLowerCase().replace(/\s+/g, '-');
-}

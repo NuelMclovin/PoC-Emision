@@ -1,0 +1,196 @@
+<app-portal-shell
+  titulo="Detalle del expediente"
+  [subtitulo]="caso ? caso.empresa : folio"
+  seccionActiva="bandeja">
+  <button class="btn-volver" type="button" (click)="volver()">← Volver a la bandeja</button>
+
+  <div class="loading-state" *ngIf="cargando">Cargando expediente {{ folio }}…</div>
+  <div class="error-state" *ngIf="error">{{ error }}</div>
+
+  <section class="expediente" *ngIf="!cargando && caso as caso">
+    <div class="expediente-card">
+      <div class="expediente-head">
+        <div>
+          <span class="folio-label">Folio</span>
+          <h2>{{ caso.folio }}</h2>
+        </div>
+        <span class="status-pill" [ngClass]="estadoClase(caso.estado)">{{ caso.estado }}</span>
+      </div>
+
+      <div class="expediente-grid">
+        <div>
+          <span class="dato-label">Empresa</span>
+          <strong>{{ caso.empresa }}</strong>
+        </div>
+        <div>
+          <span class="dato-label">Tipo</span>
+          <strong>{{ caso.tipo_accion === 'nueva' ? 'GMM Nueva' : 'GMM Renovación' }}</strong>
+        </div>
+        <div>
+          <span class="dato-label">Bróker</span>
+          <strong>{{ caso.creado_por }}</strong>
+        </div>
+        <div>
+          <span class="dato-label">Asignado a</span>
+          <strong>{{ caso.asignado_a || 'Sin asignar' }}</strong>
+        </div>
+        <div>
+          <span class="dato-label">Creación</span>
+          <strong>{{ caso.fecha_creacion | date: 'dd/MM/yyyy HH:mm' }}</strong>
+        </div>
+        <div>
+          <span class="dato-label">Última actualización</span>
+          <strong>{{ caso.fecha_actualizacion | date: 'dd/MM/yyyy HH:mm' }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="expediente-card acciones-card">
+      <div class="section-heading">
+        <h3>Resolución</h3>
+      </div>
+
+      <div class="accion-tomar" *ngIf="puedeTomar">
+        <p>Este caso aún no ha sido tomado por ningún suscriptor.</p>
+        <button class="btn-tomar" type="button" [disabled]="procesando" (click)="tomarCaso()">
+          {{ procesando ? 'Tomando…' : 'Tomar caso' }}
+        </button>
+      </div>
+
+      <div class="accion-resolver" *ngIf="puedeResolver">
+        <div class="field">
+          <label for="comentario">Comentario para el bróker</label>
+          <textarea
+            id="comentario"
+            rows="3"
+            [(ngModel)]="comentario"
+            name="comentario"
+            placeholder="Motivo de la resolución, observaciones o detalle de lo que debe corregirse…">
+          </textarea>
+        </div>
+
+        <div class="acciones-botones">
+          <button class="btn-aprobar" type="button" [disabled]="procesando" (click)="resolver('Aprobado')">
+            Aprobar
+          </button>
+          <button class="btn-observar" type="button" [disabled]="procesando" (click)="resolver('Observado')">
+            Solicitar corrección
+          </button>
+          <button class="btn-rechazar" type="button" [disabled]="procesando" (click)="resolver('Rechazado')">
+            Rechazar
+          </button>
+        </div>
+      </div>
+
+      <div class="resuelto-info" *ngIf="caso.estado === 'Aprobado' || caso.estado === 'Rechazado'">
+        <p>Este expediente ya fue resuelto por <strong>{{ caso.asignado_a }}</strong>.</p>
+      </div>
+
+      <div class="comentario-suscriptor" *ngIf="caso.comentario_suscriptor">
+        <span class="dato-label">Comentario registrado</span>
+        <p>{{ caso.comentario_suscriptor }}</p>
+      </div>
+
+      <div class="error-banner" *ngIf="accionError">{{ accionError }}</div>
+    </div>
+
+    <div class="expediente-card" *ngIf="caso.reporte as reporte">
+      <div class="section-heading">
+        <h3>Reporte de validación</h3>
+      </div>
+
+      <div class="inline-kpis">
+        <article class="inline-kpi">
+          <strong>{{ reporte.resumen.total_registros }}</strong>
+          <span>Registros</span>
+        </article>
+        <article class="inline-kpi">
+          <strong>{{ reporte.resumen.total_titulares }}</strong>
+          <span>Titulares</span>
+        </article>
+        <article class="inline-kpi">
+          <strong>{{ reporte.resumen.total_dependientes }}</strong>
+          <span>Dependientes</span>
+        </article>
+        <article class="inline-kpi error">
+          <strong>{{ reporte.resumen.total_errores }}</strong>
+          <span>Errores</span>
+        </article>
+        <article class="inline-kpi warn">
+          <strong>{{ reporte.resumen.total_advertencias }}</strong>
+          <span>Advertencias</span>
+        </article>
+      </div>
+
+      <div class="report-filters">
+        <button class="filter-btn" type="button" [class.active]="filtroResultados === 'todos'" (click)="setFiltro('todos')">
+          Todos
+          <span>{{ reporte.resultados.length }}</span>
+        </button>
+        <button class="filter-btn error" type="button" [class.active]="filtroResultados === 'error'" (click)="setFiltro('error')">
+          Errores
+          <span>{{ totalErrores }}</span>
+        </button>
+        <button class="filter-btn warn" type="button" [class.active]="filtroResultados === 'advertencia'" (click)="setFiltro('advertencia')">
+          Advertencias
+          <span>{{ totalAdvertencias }}</span>
+        </button>
+      </div>
+
+      <div class="inline-table-wrapper" *ngIf="resultadosFiltrados.length > 0; else sinResultados">
+        <table class="inline-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Categoria</th>
+              <th>Mensaje</th>
+              <th>Fila</th>
+              <th>Columna</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let resultado of resultadosFiltrados" [class]="'row-' + obtenerClaseResultado(resultado.tipo)">
+              <td>
+                <span class="result-badge" [class]="'badge-' + obtenerClaseResultado(resultado.tipo)">
+                  {{ resultado.tipo === 'advertencia' ? 'Advertencia' : 'Error' }}
+                </span>
+              </td>
+              <td>{{ resultado.categoria }}</td>
+              <td>{{ resultado.mensaje }}</td>
+              <td>{{ resultado.fila ?? '-' }}</td>
+              <td>{{ resultado.columna ?? '-' }}</td>
+              <td>{{ resultado.valor ?? '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #sinResultados>
+        <div class="empty-inline-report">No hay resultados para el filtro seleccionado.</div>
+      </ng-template>
+    </div>
+
+    <div class="expediente-card">
+      <div class="section-heading">
+        <h3>Documentos</h3>
+      </div>
+
+      <ul class="documentos-list" *ngIf="caso.documentos.length > 0; else sinDocumentos">
+        <li *ngFor="let doc of caso.documentos">
+          <div>
+            <strong>{{ doc.nombre }}</strong>
+            <span class="doc-meta">{{ doc.tipo }} · {{ formatoBytes(doc.tamano_bytes) }}</span>
+          </div>
+          <button class="btn-descargar" type="button" [disabled]="descargando === doc.nombre" (click)="descargar(doc.nombre)">
+            {{ descargando === doc.nombre ? 'Descargando…' : 'Descargar' }}
+          </button>
+        </li>
+      </ul>
+
+      <ng-template #sinDocumentos>
+        <div class="empty-inline-report">Este expediente no tiene documentos adjuntos.</div>
+      </ng-template>
+    </div>
+  </section>
+</app-portal-shell>

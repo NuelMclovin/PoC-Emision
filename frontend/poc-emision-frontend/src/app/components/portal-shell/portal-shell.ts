@@ -25,7 +25,7 @@ export class PortalShellComponent {
   ) {}
 
   get username(): string {
-    return this.auth.getUsername();
+    return this.auth.getNombre();
   }
 
   toggleMenu(): void {
