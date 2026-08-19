@@ -1,0 +1,99 @@
+﻿<div class="page-wrapper" *ngIf="reporte">
+
+  <nav class="navbar">
+    <div class="navbar-left">
+      <span class="nav-logo">AXA</span>
+      <span class="nav-divider"></span>
+      <span class="nav-title">Reporte de Validacion</span>
+    </div>
+    <button class="btn-back" (click)="nuevaValidacion()">&#8592; Nueva validacion</button>
+  </nav>
+
+  <main class="main-content">
+
+    <div class="report-header">
+      <div class="file-info">
+        <span class="file-icon">&#128196;</span>
+        <div>
+          <p class="file-name">{{ reporte.nombre_archivo }}</p>
+          <p class="file-sub">Resultado del analisis</p>
+        </div>
+      </div>
+      <div class="status-pill" [class.ok]="reporte.resumen.es_valida" [class.ko]="!reporte.resumen.es_valida">
+        {{ reporte.resumen.es_valida ? '&#10003; Macro valida' : '&#10005; Macro con errores' }}
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <span class="kpi-value">{{ reporte.resumen.total_registros }}</span>
+        <span class="kpi-label">Registros</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-value">{{ reporte.resumen.total_titulares }}</span>
+        <span class="kpi-label">Titulares</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-value">{{ reporte.resumen.total_dependientes }}</span>
+        <span class="kpi-label">Dependientes</span>
+      </div>
+      <div class="kpi error">
+        <span class="kpi-value">{{ reporte.resumen.total_errores }}</span>
+        <span class="kpi-label">Errores</span>
+      </div>
+      <div class="kpi warn">
+        <span class="kpi-value">{{ reporte.resumen.total_advertencias }}</span>
+        <span class="kpi-label">Advertencias</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn" [class.active]="filtro==='todos'" (click)="setFiltro('todos')">
+        Todos <span class="count">{{ reporte.resultados.length }}</span>
+      </button>
+      <button class="filter-btn error" [class.active]="filtro==='error'" (click)="setFiltro('error')">
+        Errores <span class="count">{{ errores.length }}</span>
+      </button>
+      <button class="filter-btn warn" [class.active]="filtro==='advertencia'" (click)="setFiltro('advertencia')">
+        Advertencias <span class="count">{{ advertencias.length }}</span>
+      </button>
+    </div>
+
+    <div class="table-card" *ngIf="resultadosFiltrados.length > 0; else sinResultados">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:110px">Tipo</th>
+            <th style="width:140px">Categoria</th>
+            <th>Mensaje</th>
+            <th style="width:60px">Fila</th>
+            <th style="width:140px">Columna</th>
+            <th style="width:110px">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of resultadosFiltrados" [class]="'row-' + r.tipo">
+            <td>
+              <span class="badge" [class]="'badge-' + r.tipo">
+                {{ r.tipo === 'error' ? 'Error' : 'Advertencia' }}
+              </span>
+            </td>
+            <td class="cat">{{ r.categoria }}</td>
+            <td class="msg">{{ r.mensaje }}</td>
+            <td class="num">{{ r.fila ?? '-' }}</td>
+            <td class="col-name">{{ r.columna ?? '-' }}</td>
+            <td class="val">{{ r.valor ?? '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #sinResultados>
+      <div class="empty-state">
+        <div class="empty-icon">&#10003;</div>
+        <p>No hay resultados para el filtro seleccionado.</p>
+      </div>
+    </ng-template>
+
+  </main>
+</div>
