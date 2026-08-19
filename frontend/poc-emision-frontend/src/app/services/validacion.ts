@@ -53,6 +53,28 @@ export class ValidacionService {
     });
   }
 
+
+  // NUEVO MÉTODO: Validar y comparar macro para renovación
+  validarYCompararMacro(
+    archivoNuevo: File,
+    archivoBase: File,
+    tipoAccion: TipoAccion, // Siempre será 'renovacion'
+    tipoProducto: 'GMM' | 'AP'
+  ): Observable<any> {
+    const formData = new FormData();
+    formData.append('archivo_nuevo', archivoNuevo, archivoNuevo.name);
+    formData.append('archivo_base', archivoBase, archivoBase.name);
+    formData.append('tipo_accion', tipoAccion);
+    formData.append('tipo_producto', tipoProducto);
+    // Usaremos un nuevo endpoint en el backend para esto
+    const url = '/api/v1/validacion/renovacion-con-base';
+    return this.http.post(url, formData, {
+      observe: 'events',
+      reportProgress: true
+    });
+  }
+
+
   // Nueva: exportar errores
   exportarErrores(payload: { headers: string[]; filas: any[]; format: 'csv' | 'xlsx'; nombre_archivo?: string }): Observable<Blob> {
     // Forzar Blob como respuesta

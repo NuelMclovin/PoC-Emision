@@ -27,47 +27,131 @@
           <h2>{{ configuracionActual.tituloPanel }}</h2>
           <p>{{ configuracionActual.subtituloPanel }}</p>
         </div>
-        <span class="status-chip" [class.analizando]="estadoRevision === 'analizando'" [class.listo]="estadoRevision === 'listo'" [class.error]="estadoRevision === 'error'">
+        <!-- El estadoTexto del componente ya maneja la lógica compleja de mostrar el estado adecuado -->
+        <span class="status-chip"
+          [class.analizando]="estaAnalizando"
+          [class.listo]="(tipoAccion === 'nueva' && estadoRevision === 'listo') || (tipoAccion === 'renovacion' && etapaRenovacion === 'renovacionCompletada')"
+          [class.error]="(tipoAccion === 'nueva' && estadoRevision === 'error') || (tipoAccion === 'renovacion' && etapaRenovacion === 'errorRenovacion')">
           {{ estadoTexto }}
         </span>
       </div>
 
-      <div
-        class="drop-zone process-drop-zone"
-        [class.has-file]="!!nombreArchivo"
-        [class.is-dragover]="arrastrandoArchivo"
-        [class.is-processing]="estaAnalizando"
-        [class.is-disabled]="estaAnalizando"
-        (click)="!estaAnalizando && inputArchivo.click()"
-        (dragover)="onDragOver($event)"
-        (dragleave)="onDragLeave($event)"
-        (drop)="onDropArchivo($event)">
-        <input #inputArchivo type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoSeleccionado($event)" hidden />
-        <div class="drop-visual process-drop-visual">
-          <div class="drop-icon">{{ nombreArchivo ? 'OK' : 'UP' }}</div>
-          <p class="drop-text">{{ nombreArchivo || 'Arrastra tu archivo aqui o haz clic para subirlo' }}</p>
-          <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
-          <p class="drop-subhint">{{ tipoAccion === 'nueva' ? 'Proceso para alta de poliza nueva' : 'Proceso para renovacion de poliza vigente' }}</p>
-          <p class="drop-auto" *ngIf="archivoCargado && estadoRevision === 'idle'">Archivo cargado. Iniciando analisis...</p>
-          <p class="drop-auto processing" *ngIf="estadoRevision === 'analizando'">Analizando datos en segundo plano...</p>
-          <p class="drop-auto success" *ngIf="estadoRevision === 'listo'">Analisis terminado. El resumen ya esta disponible abajo.</p>
+      <!-- --- UI para el proceso de 'Nueva' póliza --- -->
+      <ng-container *ngIf="tipoAccion === 'nueva'">
+        <div
+          class="drop-zone process-drop-zone"
+          [class.has-file]="!!nombreArchivo"
+          [class.is-dragover]="arrastrandoArchivo"
+          [class.is-processing]="estaAnalizando"
+          [class.is-disabled]="estaAnalizando"
+          (click)="!estaAnalizando && inputArchivo.click()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDropArchivo($event, false)">
+          <input #inputArchivo type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoSeleccionado($event, false)" hidden />
+          <div class="drop-visual process-drop-visual">
+            <div class="drop-icon">{{ nombreArchivo ? 'OK' : 'UP' }}</div>
+            <p class="drop-text">{{ nombreArchivo || 'Arrastra tu archivo aqui o haz clic para subirlo' }}</p>
+            <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
+            <p class="drop-subhint">Proceso para alta de póliza nueva</p>
+            <p class="drop-auto" *ngIf="archivoCargado && estadoRevision === 'idle'">Archivo cargado. Iniciando análisis...</p>
+            <p class="drop-auto processing" *ngIf="estadoRevision === 'analizando'">Analizando datos en segundo plano...</p>
+            <p class="drop-auto success" *ngIf="estadoRevision === 'listo'">Análisis terminado. El resumen ya está disponible abajo.</p>
+          </div>
         </div>
-      </div>
+      </ng-container>
 
+      <!-- --- UI para el proceso de 'Renovación' de póliza --- -->
+      <ng-container *ngIf="tipoAccion === 'renovacion'">
+        <!-- Paso 1: Cargar y Validar Archivo Base -->
+        <div class="drop-zone process-drop-zone"
+          [class.has-file]="!!nombreArchivoBase"
+          [class.is-dragover]="arrastrandoArchivo"
+          [class.is-processing]="estadoRevisionBase === 'analizando'"
+          [class.is-disabled]="estadoRevisionBase === 'analizando' || etapaRenovacion !== 'cargandoBase'"
+          (click)="!(estadoRevisionBase === 'analizando' || etapaRenovacion !== 'cargandoBase') && inputArchivoBase.click()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDropArchivo($event, true)">
+          <input #inputArchivoBase type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoSeleccionado($event, true)" hidden />
+          <div class="drop-visual process-drop-visual">
+            <div class="drop-icon">{{ nombreArchivoBase ? 'OK' : 'UP' }}</div>
+            <p class="drop-text">{{ nombreArchivoBase || 'Arrastra el archivo BASE (anterior) aquí o haz clic para subirlo' }}</p>
+            <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
+            <p class="drop-subhint">Paso 1: Carga y valida el archivo base de la póliza anterior.</p>
+            <p class="drop-auto" *ngIf="archivoBaseCargado && estadoRevisionBase === 'idle'">Archivo base cargado. Listo para validar.</p>
+            <p class="drop-auto processing" *ngIf="estadoRevisionBase === 'analizando'">Validando archivo base en segundo plano...</p>
+            <p class="drop-auto success" *ngIf="estadoRevisionBase === 'listo'">Archivo base validado correctamente.</p>
+          </div>
+        </div>
+
+        <!-- Resumen del Archivo Base si es válido y ya se cargó -->
+        <div class="analysis-summary" *ngIf="reporteBase && estadoRevisionBase === 'listo' && reporteBase.resumen.es_valida">
+            <div>
+                <span class="analysis-label">Archivo Base Validado:</span>
+                <h3>{{ reporteBase.nombre_archivo }}</h3>
+                <p>El archivo base es válido. Continúa con el Paso 2.</p>
+            </div>
+            <div class="inline-status ok">
+                Base Válida
+            </div>
+        </div>
+
+        <!-- Paso 2: Cargar Nuevo Archivo para Comparación (visible solo después de validar la base) -->
+        <div *ngIf="etapaRenovacion === 'baseValidada' || etapaRenovacion === 'cargandoNuevo' || etapaRenovacion === 'comparando' || etapaRenovacion === 'renovacionCompletada' || etapaRenovacion === 'errorRenovacion'"
+             class="drop-zone process-drop-zone"
+             [class.has-file]="!!nombreArchivo"
+             [class.is-dragover]="arrastrandoArchivo"
+             [class.is-processing]="estadoRevision === 'analizando'"
+             [class.is-disabled]="estadoRevision === 'analizando'"
+             (click)="!estaAnalizando && inputArchivoNuevo.click()"
+             (dragover)="onDragOver($event)"
+             (dragleave)="onDragLeave($event)"
+             (drop)="onDropArchivo($event, false)">
+          <input #inputArchivoNuevo type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoSeleccionado($event, false)" hidden />
+          <div class="drop-visual process-drop-visual">
+            <div class="drop-icon">{{ nombreArchivo ? 'OK' : 'UP' }}</div>
+            <p class="drop-text">{{ nombreArchivo || 'Arrastra el archivo NUEVO (actual) aquí o haz clic para subirlo' }}</p>
+            <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
+            <p class="drop-subhint">Paso 2: Carga el nuevo archivo de renovación para comparar con la base.</p>
+            <p class="drop-auto" *ngIf="archivoCargado && estadoRevision === 'idle'">Archivo nuevo cargado. Listo para comparar.</p>
+            <p class="drop-auto processing" *ngIf="estadoRevision === 'analizando'">Comparando con el archivo base en segundo plano...</p>
+            <p class="drop-auto success" *ngIf="estadoRevision === 'listo'">Comparación terminada. El resumen ya está disponible abajo.</p>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Botón de Acción Principal -->
       <div class="actions-row">
         <button
           class="btn-validate process-button"
           type="button"
           [disabled]="botonDeshabilitado"
           [class.is-loading]="estaAnalizando"
-          [style.--progress.%]="estaAnalizando ? progresoBoton : 0"
+          [style.--progress.%]="estaAnalizando ? (tipoAccion === 'renovacion' && estadoRevisionBase === 'analizando' ? progresoBotonBase : progresoBoton) : 0"
           (click)="validar()">
           <span class="btn-progress-fill" aria-hidden="true"></span>
           <span class="btn-label">{{ etiquetaBoton }}</span>
         </button>
       </div>
 
-      <!-- Nueva: UI de exportación de errores (solo si hay errores) -->
+      <!-- Banner de Errores (muestra el error más relevante según la etapa) -->
+      <div class="error-banner" *ngIf="(tipoAccion === 'nueva' && error) || (tipoAccion === 'renovacion' && estadoRevisionBase === 'error' && errorBase) || (tipoAccion === 'renovacion' && estadoRevision === 'error' && error)">
+          <ng-container *ngIf="tipoAccion === 'nueva'">
+              {{ error }}
+          </ng-container>
+          <ng-container *ngIf="tipoAccion === 'renovacion'">
+              <ng-container *ngIf="estadoRevisionBase === 'error'">
+                  {{ errorBase }}
+              </ng-container>
+              <ng-container *ngIf="estadoRevision === 'error' && estadoRevisionBase !== 'error'">
+                  {{ error }}
+              </ng-container>
+          </ng-container>
+      </div>
+
+
+      <!-- Sección de Exportación de Errores (si hay errores en el reporte final) -->
       <section class="export-errors" *ngIf="reporteActual && !reporteActual.resumen.es_valida">
         <div class="export-controls">
           <label>Formato de exportación:</label>
@@ -81,15 +165,16 @@
         </button>
       </section>
 
+      <!-- Sección del Reporte de Análisis (se muestra el reporte final, ya sea de una nueva póliza o de la comparación de renovación) -->
       <section class="inline-report" #resumenAnalisis *ngIf="mostrarResumen && reporteActual as reporte">
         <div class="analysis-summary">
           <div>
-            <span class="analysis-label">Resumen del analisis</span>
+            <span class="analysis-label">Resumen del análisis</span>
             <h3>{{ reporte.nombre_archivo }}</h3>
             <p>{{ resumenHallazgos }}</p>
           </div>
           <div class="inline-status" [class.ok]="reporte.resumen.es_valida" [class.ko]="!reporte.resumen.es_valida">
-            {{ reporte.resumen.es_valida ? 'Macro valida' : 'Macro con errores' }}
+            {{ reporte.resumen.es_valida ? 'Macro válida' : 'Macro con errores' }}
           </div>
         </div>
 
@@ -136,7 +221,7 @@
             <thead>
               <tr>
                 <th>Tipo</th>
-                <th>Categoria</th>
+                <th>Categoría</th>
                 <th>Mensaje</th>
                 <th>Fila</th>
                 <th>Columna</th>
@@ -167,9 +252,6 @@
         </ng-template>
       </section>
 
-      <div class="error-banner" *ngIf="error">
-        {{ error }}
-      </div>
     </section>
   </section>
 </app-portal-shell>
