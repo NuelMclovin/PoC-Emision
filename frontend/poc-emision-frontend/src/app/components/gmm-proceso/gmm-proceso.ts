@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpEventType, HttpResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
@@ -41,6 +41,8 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
   envioError = '';
   folioCreado: string | null = null;
 
+  mostrarModalReinicio = false;
+
   private temporizadorProgreso: ReturnType<typeof setInterval> | null = null;
   private solicitudActiva: Subscription | null = null;
 
@@ -49,15 +51,18 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
     private casosSvc: CasosService,
     private auth: AuthService,
     private router: Router,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
     this.casosSvc.listarCasos({ creado_por: this.auth.getUsername() }).subscribe({
       next: (casos) => {
         this.totalAbiertos = casos.filter((c) => !ESTADOS_CERRADOS.includes(c.estado)).length;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.totalAbiertos = 0;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -72,6 +77,12 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
 
   get estaAnalizando(): boolean {
     return this.estadoRevision === 'analizando';
+  }
+
+  // El análisis terminó (con o sin errores): ya no tiene sentido seguir
+  // mostrando la bandeja de carga, se debe ver el resultado.
+  get estaFinalizado(): boolean {
+    return this.estadoRevision === 'listo' || this.estadoRevision === 'error';
   }
 
   get archivoCargado(): boolean {
@@ -132,22 +143,6 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
     }
 
     return `Se encontraron ${this.totalAdvertencias} advertencias en el analisis de la macro.`;
-  }
-
-  get botonDeshabilitado(): boolean {
-    return !this.archivo || this.estaAnalizando;
-  }
-
-  get etiquetaBoton(): string {
-    if (this.estaAnalizando) {
-      return `Analizando ${this.progresoBoton}%`;
-    }
-
-    if (this.estadoRevision === 'listo') {
-      return 'Analizar de nuevo';
-    }
-
-    return 'Analizar datos';
   }
 
   get puedeEnviar(): boolean {
@@ -218,6 +213,7 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
           this.error = 'La revision no pudo completarse. Intenta de nuevo.';
           this.progresoValidacion = 0;
           this.mensajeCarga = 'No se pudo completar el analisis';
+          this.cdr.markForCheck();
         }
       }),
     ).subscribe({
@@ -230,6 +226,7 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
 
           this.progresoValidacion = Math.max(this.progresoValidacion, porcentajeCarga);
           this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
+          this.cdr.markForCheck();
           return;
         }
 
@@ -239,6 +236,7 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
             this.estadoRevision = 'error';
             this.error = 'La respuesta del servidor no incluye el resumen del analisis.';
             this.progresoValidacion = 0;
+            this.cdr.markForCheck();
             return;
           }
 
@@ -248,6 +246,7 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
           this.progresoValidacion = 100;
           this.mensajeCarga = 'Analisis completado';
           this.enfocarResumen();
+          this.cdr.markForCheck();
         }
       },
       error: (err: { error?: { detail?: string } }) => {
@@ -256,8 +255,24 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
         this.error = err?.error?.detail ?? 'No fue posible analizar los datos. Verifica el archivo e intenta de nuevo.';
         this.progresoValidacion = 0;
         this.mensajeCarga = 'No se pudo completar el analisis';
+        this.cdr.markForCheck();
       },
     });
+  }
+
+  // Pide confirmación antes de descartar el análisis actual (abre el modal
+  // de advertencia); evita perder trabajo por un clic accidental.
+  solicitarReinicio(): void {
+    this.mostrarModalReinicio = true;
+  }
+
+  cancelarReinicio(): void {
+    this.mostrarModalReinicio = false;
+  }
+
+  confirmarReinicio(): void {
+    this.mostrarModalReinicio = false;
+    this.reiniciarEstado();
   }
 
   setFiltroResultados(filtro: 'todos' | 'error' | 'advertencia'): void {
@@ -280,31 +295,46 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
       next: (caso) => {
         this.enviando = false;
         this.folioCreado = caso.folio;
+        this.cdr.markForCheck();
         this.router.navigate(['/expediente', caso.folio]);
       },
       error: (err: { error?: { detail?: string } }) => {
         this.enviando = false;
         this.envioError = err?.error?.detail ?? 'No fue posible enviar el expediente a suscripción.';
+        this.cdr.markForCheck();
       },
     });
   }
 
   private asignarArchivo(archivo: File): void {
-    this.cancelarSolicitudActiva();
+    this.reiniciarEstado();
     this.archivo = archivo;
     this.nombreArchivo = archivo.name;
-    this.error = '';
-    this.reporteActual = null;
-    this.mostrarResumen = false;
-    this.estadoRevision = 'idle';
-    this.progresoValidacion = 0;
     this.mensajeCarga = 'Archivo cargado, iniciando analisis';
-    this.arrastrandoArchivo = false;
-    this.folioCreado = null;
-    this.envioError = '';
 
     // El analisis inicia automaticamente al cargar el archivo.
     this.validar();
+  }
+
+  // Descarta el archivo/análisis actual y deja el componente como recién
+  // montado, listo para recibir un nuevo caso.
+  private reiniciarEstado(): void {
+    this.cancelarSolicitudActiva();
+    this.detenerProgresoSimulado();
+    this.archivo = null;
+    this.nombreArchivo = '';
+    this.error = '';
+    this.reporteActual = null;
+    this.mostrarResumen = false;
+    this.filtroResultados = 'todos';
+    this.estadoRevision = 'idle';
+    this.progresoValidacion = 0;
+    this.mensajeCarga = 'Carga un archivo para iniciar el analisis';
+    this.arrastrandoArchivo = false;
+    this.folioCreado = null;
+    this.envioError = '';
+    this.empresa = '';
+    this.enviando = false;
   }
 
   private iniciarProgresoSimulado(): void {
@@ -319,12 +349,14 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
       if (this.progresoValidacion < 78) {
         this.progresoValidacion += 3;
         this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
+        this.cdr.markForCheck();
         return;
       }
 
       if (this.progresoValidacion < 94) {
         this.progresoValidacion += 1;
         this.mensajeCarga = `Analizando datos ${this.progresoBoton}%`;
+        this.cdr.markForCheck();
       }
     }, 180);
   }

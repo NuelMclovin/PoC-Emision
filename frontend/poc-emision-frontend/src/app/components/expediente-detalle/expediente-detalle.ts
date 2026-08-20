@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
 import { CasoDetalle, CasosService, estadoClase } from '../../services/casos';
@@ -23,6 +23,7 @@ export class ExpedienteDetalleComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private casosSvc: CasosService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -37,10 +38,12 @@ export class ExpedienteDetalleComponent implements OnInit {
       next: (caso) => {
         this.caso = caso;
         this.cargando = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = `No se encontró el expediente ${this.folio}.`;
         this.cargando = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -93,9 +96,11 @@ export class ExpedienteDetalleComponent implements OnInit {
         enlace.click();
         URL.revokeObjectURL(url);
         this.descargando = null;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.descargando = null;
+        this.cdr.markForCheck();
       },
     });
   }

@@ -32,7 +32,11 @@
         </span>
       </div>
 
+      <!-- Bandeja de carga: sólo visible mientras no hay un análisis terminado.
+           Una vez que hay resultado (éxito o error) se oculta para dar paso al
+           resumen; el usuario decide explícitamente cuándo descartarlo. -->
       <div
+        *ngIf="!estaFinalizado"
         class="drop-zone process-drop-zone"
         [class.has-file]="!!nombreArchivo"
         [class.is-dragover]="arrastrandoArchivo"
@@ -50,20 +54,24 @@
           <p class="drop-subhint">{{ tipoAccion === 'nueva' ? 'Proceso para alta de poliza nueva' : 'Proceso para renovacion de poliza vigente' }}</p>
           <p class="drop-auto" *ngIf="archivoCargado && estadoRevision === 'idle'">Archivo cargado. Iniciando analisis...</p>
           <p class="drop-auto processing" *ngIf="estadoRevision === 'analizando'">Analizando datos en segundo plano...</p>
-          <p class="drop-auto success" *ngIf="estadoRevision === 'listo'">Analisis terminado. El resumen ya esta disponible abajo.</p>
         </div>
       </div>
 
-      <div class="actions-row">
-        <button
-          class="btn-validate process-button"
-          type="button"
-          [disabled]="botonDeshabilitado"
-          [class.is-loading]="estaAnalizando"
-          [style.--progress.%]="estaAnalizando ? progresoBoton : 0"
-          (click)="validar()">
-          <span class="btn-progress-fill" aria-hidden="true"></span>
-          <span class="btn-label">{{ etiquetaBoton }}</span>
+      <!-- Una vez finalizado el análisis, la bandeja de carga se sustituye por
+           esta barra compacta con el archivo procesado y la opción de
+           reiniciar (con confirmación) para cargar un caso nuevo. -->
+      <div class="file-bar" *ngIf="estaFinalizado">
+        <div class="file-bar-info">
+          <span class="file-bar-icon" [class.ok]="estadoRevision === 'listo'" [class.ko]="estadoRevision === 'error'">
+            {{ estadoRevision === 'listo' ? 'OK' : '!' }}
+          </span>
+          <div>
+            <strong>{{ nombreArchivo }}</strong>
+            <small>{{ estadoTexto }}</small>
+          </div>
+        </div>
+        <button class="btn-reiniciar" type="button" (click)="solicitarReinicio()">
+          Descartar y cargar otro caso
         </button>
       </div>
 
@@ -102,6 +110,40 @@
           </article>
         </div>
 
+        <!-- Envío a suscripción: es lo primero que debe verse tras el resumen,
+             antes del detalle fila por fila. -->
+        <div class="envio-suscripcion">
+          <div class="envio-copy">
+            <h4>Enviar expediente a suscripción</h4>
+            <p>El bróker envía el censo validado al suscriptor interno, quien revisará el expediente completo (reporte y documentos) para resolverlo.</p>
+          </div>
+
+          <div class="envio-form">
+            <div class="field">
+              <label for="empresa">Empresa / Contratante</label>
+              <input
+                id="empresa"
+                type="text"
+                [(ngModel)]="empresa"
+                name="empresa"
+                placeholder="Razón social del contratante"
+                [disabled]="enviando"
+                autocomplete="off" />
+            </div>
+
+            <button
+              class="btn-enviar"
+              type="button"
+              [disabled]="!puedeEnviar"
+              (click)="enviarASuscripcion()">
+              {{ enviando ? 'Enviando…' : 'Enviar a suscripción' }}
+            </button>
+          </div>
+
+          <div class="error-banner" *ngIf="envioError">{{ envioError }}</div>
+          <div class="envio-ok" *ngIf="folioCreado">Expediente {{ folioCreado }} enviado a suscripción.</div>
+        </div>
+
         <div class="report-filters">
           <button class="filter-btn" type="button" [class.active]="filtroResultados === 'todos'" (click)="setFiltroResultados('todos')">
             Todos
@@ -117,6 +159,9 @@
           </button>
         </div>
 
+        <!-- Contenedor con scroll interno: si el reporte tiene muchas filas,
+             la tabla se desplaza dentro de su caja en vez de estirar toda la
+             página (esto es una app web, no un documento largo). -->
         <div class="inline-table-wrapper" *ngIf="resultadosFiltrados.length > 0; else sinResultadosInline">
           <table class="inline-table">
             <thead>
@@ -151,38 +196,6 @@
             No hay resultados para el filtro seleccionado.
           </div>
         </ng-template>
-
-        <div class="envio-suscripcion">
-          <div class="envio-copy">
-            <h4>Enviar expediente a suscripción</h4>
-            <p>El bróker envía el censo validado al suscriptor interno, quien revisará el expediente completo (reporte y documentos) para resolverlo.</p>
-          </div>
-
-          <div class="envio-form">
-            <div class="field">
-              <label for="empresa">Empresa / Contratante</label>
-              <input
-                id="empresa"
-                type="text"
-                [(ngModel)]="empresa"
-                name="empresa"
-                placeholder="Razón social del contratante"
-                [disabled]="enviando"
-                autocomplete="off" />
-            </div>
-
-            <button
-              class="btn-enviar"
-              type="button"
-              [disabled]="!puedeEnviar"
-              (click)="enviarASuscripcion()">
-              {{ enviando ? 'Enviando…' : 'Enviar a suscripción' }}
-            </button>
-          </div>
-
-          <div class="error-banner" *ngIf="envioError">{{ envioError }}</div>
-          <div class="envio-ok" *ngIf="folioCreado">Expediente {{ folioCreado }} enviado a suscripción.</div>
-        </div>
       </section>
 
       <div class="error-banner" *ngIf="error">
@@ -190,4 +203,16 @@
       </div>
     </section>
   </section>
+
+  <!-- Modal de advertencia: reiniciar descarta el análisis actual. -->
+  <div class="modal-overlay" *ngIf="mostrarModalReinicio" (click)="cancelarReinicio()">
+    <div class="modal-card" role="alertdialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <h3>¿Descartar el caso actual?</h3>
+      <p>Se perderá el procesamiento y el análisis actuales. Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button class="btn-modal-secundario" type="button" (click)="cancelarReinicio()">Cancelar</button>
+        <button class="btn-modal-peligro" type="button" (click)="confirmarReinicio()">Sí, descartar</button>
+      </div>
+    </div>
+  </div>
 </app-portal-shell>

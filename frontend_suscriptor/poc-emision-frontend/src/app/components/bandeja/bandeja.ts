@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
 import { AuthService } from '../../services/auth';
@@ -24,6 +24,7 @@ export class BandejaComponent implements OnInit {
     private router: Router,
     private auth: AuthService,
     private casosSvc: CasosService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -37,10 +38,16 @@ export class BandejaComponent implements OnInit {
       next: (casos) => {
         this.casos = casos.filter((caso) => !ESTADOS_CERRADOS.includes(caso.estado));
         this.cargando = false;
+        // Esta actualización viene de un callback HTTP asíncrono, no de un
+        // evento de plantilla (click, etc.). En esta versión de Angular eso
+        // ya no basta para que la vista se repinte sola: hay que marcar la
+        // vista explícitamente para que el próximo ciclo de CD la recoja.
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = 'No se pudo cargar la bandeja de revisión.';
         this.cargando = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -95,6 +102,7 @@ export class BandejaComponent implements OnInit {
       next: () => this.cargar(),
       error: () => {
         this.error = `No se pudo tomar el caso ${caso.folio}.`;
+        this.cdr.markForCheck();
       },
     });
   }

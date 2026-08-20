@@ -30,7 +30,7 @@ logger = get_logger()
 router = APIRouter(prefix="/api/v1/casos", tags=["casos"])
 
 EXTENSIONES_PERMITIDAS = {".xlsx", ".xls", ".xlsm", ".csv"}
-MAX_SIZE_MB = 20
+MAX_SIZE_MB = 100
 
 
 def _detalle_de(caso: CasoResumen) -> CasoDetalle:

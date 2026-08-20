@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
@@ -31,6 +31,7 @@ export class CasoDetalleComponent implements OnInit {
     private router: Router,
     private casosSvc: CasosService,
     private auth: AuthService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -46,10 +47,12 @@ export class CasoDetalleComponent implements OnInit {
         this.caso = caso;
         this.comentario = caso.comentario_suscriptor || '';
         this.cargando = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = `No se encontró el expediente ${this.folio}.`;
         this.cargando = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -110,10 +113,12 @@ export class CasoDetalleComponent implements OnInit {
       next: (caso) => {
         this.caso = caso;
         this.procesando = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.procesando = false;
         this.accionError = 'No se pudo tomar el caso. Intenta de nuevo.';
+        this.cdr.markForCheck();
       },
     });
   }
@@ -128,10 +133,12 @@ export class CasoDetalleComponent implements OnInit {
       next: (caso) => {
         this.caso = caso;
         this.procesando = false;
+        this.cdr.markForCheck();
       },
       error: (err: { error?: { detail?: string } }) => {
         this.procesando = false;
         this.accionError = err?.error?.detail ?? 'No se pudo actualizar el caso.';
+        this.cdr.markForCheck();
       },
     });
   }
@@ -150,9 +157,11 @@ export class CasoDetalleComponent implements OnInit {
         enlace.click();
         URL.revokeObjectURL(url);
         this.descargando = null;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.descargando = null;
+        this.cdr.markForCheck();
       },
     });
   }

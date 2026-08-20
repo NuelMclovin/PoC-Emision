@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -17,7 +17,11 @@ export class LoginComponent {
   error = '';
   loading = false;
 
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(
+    private auth: AuthService,
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   login(): void {
     this.error = '';
@@ -28,6 +32,7 @@ export class LoginComponent {
           this.auth.logout();
           this.error = 'Esta cuenta no tiene acceso al portal de bróker.';
           this.loading = false;
+          this.cdr.markForCheck();
           return;
         }
         this.router.navigate(['/dashboard']);
@@ -35,6 +40,7 @@ export class LoginComponent {
       error: () => {
         this.error = 'Usuario o contraseña incorrectos.';
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
   }

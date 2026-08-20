@@ -4,7 +4,7 @@
 
 .loading-state,
 .error-state {
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: 16px;
   text-align: center;
   color: #697792;
@@ -25,8 +25,8 @@
 .expediente-card {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(0, 0, 143, 0.08);
-  border-radius: 22px;
-  padding: 1.35rem 1.5rem;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
   box-shadow: 0 16px 34px rgba(0, 0, 143, 0.08);
   display: grid;
   gap: 1rem;
@@ -220,10 +220,17 @@
 }
 
 .inline-table-wrapper {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 22rem;
   border: 1px solid #edf1f7;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #fff;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 }
 
 .inline-table {
@@ -233,14 +240,14 @@
 
   th,
   td {
-    padding: 0.8rem 0.85rem;
+    padding: 0.55rem 0.7rem;
     text-align: left;
     border-bottom: 1px solid #edf1f7;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
   }
 
   th {
-    font-size: 0.76rem;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #697792;

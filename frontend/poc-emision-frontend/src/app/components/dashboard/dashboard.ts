@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
 import { AuthService } from '../../services/auth';
@@ -25,6 +25,7 @@ export class DashboardComponent implements OnInit {
     private router: Router,
     private auth: AuthService,
     private casosSvc: CasosService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -38,10 +39,12 @@ export class DashboardComponent implements OnInit {
       next: (casos) => {
         this.casos = casos;
         this.cargando = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = 'No se pudieron cargar tus expedientes. Intenta de nuevo.';
         this.cargando = false;
+        this.cdr.markForCheck();
       },
     });
   }

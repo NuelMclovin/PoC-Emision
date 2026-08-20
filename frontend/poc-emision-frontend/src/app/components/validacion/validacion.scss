@@ -127,7 +127,7 @@
   align-items: center;
   gap: 0.85rem;
   padding: 0.9rem;
-  border-radius: 18px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
 
   strong,
@@ -155,7 +155,7 @@
 }
 
 .topbar {
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.25rem;
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(19, 32, 58, 0.08);
@@ -192,7 +192,7 @@
 .open-counter {
   min-width: 180px;
   padding: 0.85rem 1rem;
-  border-radius: 18px;
+  border-radius: 10px;
   background: linear-gradient(135deg, rgba(20, 16, 143, 0.08), rgba(255, 58, 58, 0.08));
   border: 1px solid rgba(20, 16, 143, 0.08);
 
@@ -244,8 +244,8 @@
 
 .summary-card {
   background: var(--surface);
-  border-radius: 22px;
-  padding: 1.5rem;
+  border-radius: 12px;
+  padding: 1rem;
   border: 1px solid rgba(19, 32, 58, 0.08);
   box-shadow: 0 18px 45px rgba(25, 34, 73, 0.08);
   border-top: 4px solid transparent;
@@ -285,8 +285,8 @@
 .history-section {
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(19, 32, 58, 0.08);
-  border-radius: 26px;
-  padding: 1.5rem;
+  border-radius: 12px;
+  padding: 1rem;
   box-shadow: 0 16px 38px rgba(25, 34, 73, 0.06);
 }
 
@@ -317,8 +317,8 @@
 .widget-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 22px;
-  padding: 1.35rem;
+  border-radius: 12px;
+  padding: 1rem;
   display: grid;
   gap: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -395,7 +395,7 @@
 
 .drop-zone {
   border: 2px dashed #cdd5f3;
-  border-radius: 18px;
+  border-radius: 10px;
   background: var(--surface-soft);
   cursor: pointer;
   transition: border-color 0.2s ease, background 0.2s ease;
@@ -418,7 +418,7 @@
 }
 
 .drop-visual {
-  padding: 1.6rem 1rem;
+  padding: 1.1rem 1rem;
   text-align: center;
 }
 
@@ -514,12 +514,12 @@
 .process-card {
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(19, 32, 58, 0.08);
-  border-radius: 24px;
+  border-radius: 12px;
   box-shadow: 0 16px 38px rgba(25, 34, 73, 0.06);
 }
 
 .process-help {
-  padding: 1.35rem;
+  padding: 1rem;
 
   h2 {
     font-size: 1.15rem;
@@ -549,7 +549,7 @@
 }
 
 .process-card {
-  padding: 1.5rem;
+  padding: 1rem;
   display: grid;
   gap: 1rem;
 }
@@ -709,10 +709,17 @@
 }
 
 .inline-table-wrapper {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 22rem;
   border: 1px solid #edf1f7;
-  border-radius: 18px;
+  border-radius: 12px;
   background: #fff;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 }
 
 .inline-table {
@@ -782,7 +789,15 @@
 }
 
 .history-table-wrapper {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 22rem;
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fafbff;
+  }
 }
 
 .history-table {

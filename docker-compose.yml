@@ -5,6 +5,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # Proxy corporativo (opcional): toma HTTP_PROXY/HTTPS_PROXY/NO_PROXY del
+      # entorno donde corres `docker compose build`/`up`. Si no están definidas
+      # localmente, quedan vacías y el build funciona igual sin proxy.
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
     container_name: poc-emision-backend
     ports:
       - "8000:8000"
@@ -21,6 +28,10 @@ services:
     build:
       context: ./frontend/poc-emision-frontend
       dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
     container_name: poc-emision-frontend
     ports:
       - "4200:80"
@@ -32,6 +43,10 @@ services:
     build:
       context: ./frontend_suscriptor/poc-emision-frontend
       dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
     container_name: poc-emision-frontend-suscriptor
     ports:
       - "4201:80"

@@ -1,10 +1,6 @@
-<div class="dashboard-shell" [class.menu-colapsado]="menuColapsado">
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="brand-copy" *ngIf="!menuColapsado">
-        <strong>Portal de Emisión</strong>
-        <small>GMM Colectivo</small>
-      </div>
+<div class="app-shell" [class.menu-colapsado]="menuColapsado">
+  <header class="app-header">
+    <div class="header-left">
       <button
         class="collapse-button"
         type="button"
@@ -12,79 +8,87 @@
         [attr.aria-expanded]="!menuColapsado"
         [attr.aria-label]="menuColapsado ? 'Expandir menú' : 'Colapsar menú'">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="4" width="18" height="16" rx="3"></rect>
-          <line x1="9.5" y1="4" x2="9.5" y2="20"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
       </button>
-    </div>
 
-    <nav class="sidebar-nav">
-      <button type="button" class="nav-item" [class.active]="seccionActiva === 'dashboard'" (click)="irASeccion('dashboard')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
-          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-        </svg>
-        <span *ngIf="!menuColapsado">Dashboard</span>
-      </button>
-
-      <button type="button" class="nav-item" [class.active]="seccionActiva === 'nueva'" (click)="irASeccion('nueva')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M14 3v4a1 1 0 0 0 1 1h4"></path>
-          <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"></path>
-          <line x1="12" y1="11.5" x2="12" y2="17.5"></line>
-          <line x1="9" y1="14.5" x2="15" y2="14.5"></line>
-        </svg>
-        <span *ngIf="!menuColapsado">Nueva GMM</span>
-      </button>
-
-      <button type="button" class="nav-item" [class.active]="seccionActiva === 'renovacion'" (click)="irASeccion('renovacion')">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M23 4v6h-6"></path>
-          <path d="M1 20v-6h6"></path>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
-          <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
-        </svg>
-        <span *ngIf="!menuColapsado">Renovación GMM</span>
-      </button>
-    </nav>
-
-    <div class="sidebar-user" [attr.title]="menuColapsado ? username : null">
-      <span class="user-avatar">{{ username.charAt(0) || 'U' }}</span>
-      <div *ngIf="!menuColapsado">
-        <strong>{{ username }}</strong>
-        <small>Bróker</small>
-      </div>
-    </div>
-  </aside>
-
-  <div class="dashboard-main">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Portal de emisión</p>
-        <h1>{{ titulo }}</h1>
-        <p class="topbar-copy" *ngIf="subtitulo">{{ subtitulo }}</p>
-      </div>
-
-      <div class="topbar-actions">
-        <div class="open-counter">
-          <span class="counter-label">Expedientes abiertos</span>
-          <strong>{{ totalAbiertos }}</strong>
+      <div class="brand">
+        <span class="brand-mark">PE</span>
+        <div class="brand-copy">
+          <strong>Portal de Emisión</strong>
+          <small>GMM Colectivo</small>
         </div>
-        <button class="btn-logout" type="button" (click)="logout()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
-          </svg>
-          Salir
-        </button>
       </div>
-    </header>
+    </div>
 
-    <main class="dashboard-content">
-      <ng-content></ng-content>
-    </main>
+    <div class="header-right">
+      <div class="open-counter">
+        <span class="counter-label">Abiertos</span>
+        <strong>{{ totalAbiertos }}</strong>
+      </div>
+
+      <div class="header-user" [attr.title]="username">
+        <span class="user-avatar">{{ username.charAt(0) || 'U' }}</span>
+        <span class="user-name">{{ username }}</span>
+      </div>
+
+      <button class="btn-logout" type="button" (click)="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+        <span>Salir</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="shell-body">
+    <aside class="sidebar">
+      <nav class="sidebar-nav">
+        <button type="button" class="nav-item" [class.active]="seccionActiva === 'dashboard'" (click)="irASeccion('dashboard')" [attr.title]="menuColapsado ? 'Dashboard' : null">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+          </svg>
+          <span *ngIf="!menuColapsado">Dashboard</span>
+        </button>
+
+        <button type="button" class="nav-item" [class.active]="seccionActiva === 'nueva'" (click)="irASeccion('nueva')" [attr.title]="menuColapsado ? 'Nueva GMM' : null">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M14 3v4a1 1 0 0 0 1 1h4"></path>
+            <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"></path>
+            <line x1="12" y1="11.5" x2="12" y2="17.5"></line>
+            <line x1="9" y1="14.5" x2="15" y2="14.5"></line>
+          </svg>
+          <span *ngIf="!menuColapsado">Nueva GMM</span>
+        </button>
+
+        <button type="button" class="nav-item" [class.active]="seccionActiva === 'renovacion'" (click)="irASeccion('renovacion')" [attr.title]="menuColapsado ? 'Renovación GMM' : null">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M23 4v6h-6"></path>
+            <path d="M1 20v-6h6"></path>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"></path>
+            <path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"></path>
+          </svg>
+          <span *ngIf="!menuColapsado">Renovación GMM</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="dashboard-main">
+      <main class="dashboard-content">
+        <div class="page-header" *ngIf="titulo">
+          <h1>{{ titulo }}</h1>
+          <p class="page-subtitle" *ngIf="subtitulo">{{ subtitulo }}</p>
+        </div>
+
+        <ng-content></ng-content>
+      </main>
+    </div>
   </div>
 </div>

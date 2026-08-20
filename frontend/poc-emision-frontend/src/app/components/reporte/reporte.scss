@@ -33,7 +33,7 @@
   }
 
   .status-pill {
-    padding: .5rem 1.25rem; border-radius: 20px; font-weight: 700; font-size: .875rem;
+    padding: .5rem 1.25rem; border-radius: 10px; font-weight: 700; font-size: .875rem;
     &.ok { background: #dcfce7; color: #15803d; }
     &.ko { background: #fee2e2; color: #dc2626; }
   }
@@ -169,12 +169,12 @@
   }
 }
 
-.tabla-wrapper { overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+.tabla-wrapper { overflow: auto; max-height: 24rem; background: #fff; border-radius: 8px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
 
 .tabla-reporte {
-  width: 100%; border-collapse: collapse; font-size: .875rem;
-  th { background: #f0f0fa; color: #00008f; padding: .75rem 1rem; text-align: left; font-weight: 600; border-bottom: 2px solid #dde; }
-  td { padding: .625rem 1rem; border-bottom: 1px solid #f0f0f5; vertical-align: top; }
+  width: 100%; border-collapse: collapse; font-size: .8rem;
+  th { position: sticky; top: 0; z-index: 1; background: #f0f0fa; color: #00008f; padding: .55rem .75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #dde; }
+  td { padding: .45rem .75rem; border-bottom: 1px solid #f0f0f5; vertical-align: top; }
   tr.error td { background: #fff8f8; }
   tr.advertencia td { background: #fffdf0; }
   .valor { font-family: monospace; font-size: .8rem; color: #555; }

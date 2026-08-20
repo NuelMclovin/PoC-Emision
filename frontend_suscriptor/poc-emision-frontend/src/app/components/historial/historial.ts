@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
 import { CasoResumen, CasosService, ESTADOS_CERRADOS, estadoClase } from '../../services/casos';
@@ -22,6 +22,7 @@ export class HistorialComponent implements OnInit {
   constructor(
     private router: Router,
     private casosSvc: CasosService,
+    private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -35,10 +36,12 @@ export class HistorialComponent implements OnInit {
       next: (casos) => {
         this.casos = casos.filter((caso) => ESTADOS_CERRADOS.includes(caso.estado));
         this.cargando = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = 'No se pudo cargar el historial.';
         this.cargando = false;
+        this.cdr.markForCheck();
       },
     });
   }
