@@ -1,0 +1,29 @@
+/* ─── Reset y base ────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Densidad tipo "consola de administración" (Azure Portal / DevOps): la
+   mayoría de los componentes usan unidades `rem`, así que reducir el
+   font-size raíz encoge proporcionalmente textos, paddings y márgenes en
+   toda la app sin tener que tocar cada componente. */
+html {
+  font-size: 14px;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  font-size: 1rem;
+  color: #222;
+  background: #f4f5f9;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { margin: 0; line-height: 1.3; }
+p { margin: 0; line-height: 1.5; }
+a { color: #00008f; }
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f0f0f5; }
+::-webkit-scrollbar-thumb { background: #b0b8d9; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #8c96c4; }

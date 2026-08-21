@@ -29,6 +29,10 @@ export class DashboardComponent {
     return this.expedientes.filter((expediente) => expediente.estado !== 'Completado' && expediente.tipo === 'GMM Renovacion').length;
   }
 
+  get observados(): number {
+    return this.expedientes.filter((expediente) => expediente.estado === 'Observado').length;
+  }
+
   abrirProceso(tipo: TipoAccion): void {
     this.router.navigate([tipo === 'nueva' ? '/gmm/nueva' : '/gmm/renovacion']);
   }

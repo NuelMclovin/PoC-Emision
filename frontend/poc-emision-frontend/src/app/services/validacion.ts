@@ -5,6 +5,9 @@ import { Injectable } from '@angular/core';
 // Tipos de dominio expuestos al frontend
 export type TipoAccion = 'nueva' | 'renovacion';
 
+export type TipoProducto = 'GMM' | 'AP';
+
+
 // Modelo de resumen de validación
 export interface ResumenValidacion {
   total_registros: number;

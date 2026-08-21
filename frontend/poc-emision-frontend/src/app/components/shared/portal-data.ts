@@ -1,7 +1,8 @@
 import { TipoAccion } from '../../services/validacion';
 
 export type SeccionPortal = 'dashboard' | 'nueva' | 'renovacion';
-export type EstadoExpediente = 'En proceso' | 'Pendiente' | 'En revision' | 'Completado';
+export type EstadoExpediente = 'En proceso' | 'Pendiente' | 'En revision' | 'Completado' | 'Observado';
+
 
 export interface Expediente {
   folio: string;

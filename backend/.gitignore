@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.env
+
+# Almacenamiento local de la PoC (CSV de casos + volumen de documentos por folio)
+data/
+tmp/

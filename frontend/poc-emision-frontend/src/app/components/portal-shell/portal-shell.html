@@ -1,16 +1,19 @@
 <div class="dashboard-shell" [class.menu-colapsado]="menuColapsado">
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <button class="collapse-button" type="button" (click)="toggleMenu()" aria-label="Colapsar menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-      <div class="brand-copy" *ngIf="!menuColapsado">
-        <strong>Portal de Emision</strong>
-        <small>GMM Colectivo</small>
-      </div>
+  <button class="collapse-button" type="button" (click)="toggleMenu()" aria-label="Colapsar menu">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <div class="logo-area" *ngIf="!menuColapsado"> <!-- ¡AGREGADO *ngIf="!menuColapsado" AQUÍ! -->
+    <div class="logo-icon">PE</div>
+    <div class="brand-copy">
+      <strong>Portal de Emision</strong>
+      <small>GMM Colectivo</small>
     </div>
+  </div>
+</div>
 
     <nav class="sidebar-nav">
       <button type="button" class="nav-item" [class.active]="seccionActiva === 'dashboard'" (click)="irASeccion('dashboard')">
@@ -47,11 +50,18 @@
       </div>
 
       <div class="topbar-actions">
-        <div class="open-counter">
-          <span class="counter-label">Expedientes abiertos</span>
-          <strong>{{ totalAbiertos }}</strong>
+        <div class="topbar-status-item">
+          <span class="status-label">Abiertos</span>
+          <span class="status-value">{{ totalAbiertos }}</span>
         </div>
-        <button class="btn-logout" type="button" (click)="logout()">Salir</button>
+        <div class="topbar-user-menu">
+          <span class="user-initial">{{ username.charAt(0) || 'U' }}</span>
+          <span class="user-name">Admin</span>
+        </div>
+        <button class="btn-logout" type="button" (click)="logout()">
+          <span class="material-icons">logout</span>
+          Salir
+        </button>
       </div>
     </header>
 
