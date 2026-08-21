@@ -704,3 +704,70 @@
     width: 100%;
   }
 }
+
+/* Estilos para el botón de descarga y su dropdown */
+.download-dropdown {
+  position: relative; /* Esencial para posicionar el dropdown relativo a este botón */
+  display: inline-block; /* Para que ocupe solo el espacio necesario */
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #dbe1f0;
+  background: #fff;
+  color: #697792;
+  border-radius: 12px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit; /* Asegura que herede la fuente del cuerpo */
+
+  &:hover {
+    border-color: rgba(20, 16, 143, 0.24);
+    background: #eef2ff;
+    color: #00008f;
+  }
+}
+
+.arrow-down {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: 0.25rem;
+  vertical-align: middle;
+  border-top: 0.3em solid;
+  border-right: 0.3em solid transparent;
+  border-left: 0.3em solid transparent;
+}
+
+.dropdown-content {
+  display: none; /* Por defecto, oculto */
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+  z-index: 10; /* Asegura que esté por encima de otros elementos */
+  border-radius: 8px;
+  overflow: hidden; /* Para que los bordes del dropdown se apliquen bien a los a */
+  margin-top: 0.5rem; /* Pequeño espacio entre el botón y el dropdown */
+  left: 0; /* Alineado a la izquierda del botón padre */
+
+  &.show {
+    display: block; /* Visible cuando tiene la clase 'show' */
+  }
+
+  a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    font-size: 0.85rem;
+    cursor: pointer; /* Indica que es clicable */
+    
+    &:hover {
+      background-color: #f1f1f1;
+    }
+  }
+}

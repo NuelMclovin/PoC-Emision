@@ -157,6 +157,18 @@
             Advertencias
             <span>{{ totalAdvertencias }}</span>
           </button>
+          <!-- Boton de descarga -->
+           <div class="download-dropdown" *ngIf="totalErrores > 0">
+            <button class="btn-download" type="button" (click)="toggleDownloadOptions()">
+              Descargar Errores <span class="arrow-down"></span>
+            </button>
+            <div class="dropdown-content" [class.show]="showDownloadOptions">
+              <a (click)="descargarReporteErrores('csv'); $event.stopPropagation()">CSV</a>
+              <a (click)="descargarReporteErrores('excel'); $event.stopPropagation()">Excel</a>
+            </div>
+          </div>
+
+
         </div>
 
         <!-- Contenedor con scroll interno: si el reporte tiene muchas filas,

@@ -29,6 +29,7 @@ export interface ReporteValidacion {
   resultados: ResultadoValidacion[];
 }
 
+
 @Injectable({ providedIn: 'root' })
 export class ValidacionService {
   // URL relativa → pasa por el proxy de Angular (proxy.conf.json → localhost:8000)
@@ -50,4 +51,34 @@ export class ValidacionService {
       reportProgress: true,
     });
   }
+
+  /**
+   * Solicita al backend la descarga de un archivo con los registros del censo que contienen errores.
+   * @param archivo El archivo original del censo.
+   * @param tipoAccion Tipo de acción (nueva/renovacion).
+   * @param tipoProducto Tipo de producto (GMM/AP).
+   * @param filasConError Un array con los números de fila (1-based) que contienen errores.
+   * @param formato El formato de salida deseado (csv/excel).
+   * @returns Un Observable que emite un Blob con el contenido del archivo.
+   */
+  descargarResultados(
+    archivo: File,
+    tipoAccion: TipoAccion,
+    tipoProducto: TipoProducto,
+    filasConError: number[],
+    formato: 'csv' | 'excel'
+  ): Observable<Blob> {
+    const form = new FormData();
+    form.append('archivo', archivo, archivo.name);
+    form.append('tipo_accion', tipoAccion);
+    form.append('tipo_producto', tipoProducto);
+    form.append('filas_con_error', JSON.stringify(filasConError)); // Enviar como JSON string
+    form.append('formato', formato);
+
+    return this.http.post(`${this.API}/descargar-errores`, form, {
+      responseType: 'blob' // Es crucial para recibir el archivo como un Blob
+    });
+  }
 }
+
+

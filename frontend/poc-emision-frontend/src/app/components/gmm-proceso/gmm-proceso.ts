@@ -42,6 +42,7 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
   folioCreado: string | null = null;
 
   mostrarModalReinicio = false;
+  showDownloadOptions = false; // Nueva propiedad: Controla la visibilidad del menú de descarga
 
   private temporizadorProgreso: ReturnType<typeof setInterval> | null = null;
   private solicitudActiva: Subscription | null = null;
@@ -142,7 +143,7 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
       return `Se encontraron ${this.totalErrores} errores en el analisis de la macro.`;
     }
 
-    return `Se encontraron ${this.totalAdvertencias} advertencias en el analisis de la macro.`;
+    return `Se encontraron ${this.totalAdvertencias} advertencias en el analisis de la macro.`
   }
 
   get puedeEnviar(): boolean {
@@ -287,7 +288,6 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
     if (!this.puedeEnviar || !this.archivo) {
       return;
     }
-
     this.enviando = true;
     this.envioError = '';
 
@@ -303,6 +303,55 @@ export class GmmProcesoComponent implements OnInit, OnDestroy {
         this.envioError = err?.error?.detail ?? 'No fue posible enviar el expediente a suscripción.';
         this.cdr.markForCheck();
       },
+    });
+  }
+
+  toggleDownloadOptions(): void {
+    console.log('Toggle download options clicked. Current showDownloadOptions:', this.showDownloadOptions);
+    this.showDownloadOptions = !this.showDownloadOptions;
+  }
+
+  descargarReporteErrores(formato: 'csv' | 'excel'): void {
+    console.log(`Intentando descargar reporte de errores en formato: ${formato}`);
+
+    if (!this.reporteActual || !this.archivo || this.totalErrores === 0) {
+      console.warn('Condiciones no cumplidas para la descarga.');
+      return;
+    }
+
+    this.showDownloadOptions = false; // Cierra el dropdown después de la selección
+
+    // Extraer los números de fila de los errores para enviarlos al backend
+    const filasConError = this.reporteActual.resultados
+      .filter(resultado => resultado.tipo === 'error' && resultado.fila !== null)
+      .map(resultado => resultado.fila as number);
+
+    this.validacionSvc.descargarResultados(
+      this.archivo,
+      this.tipoAccion,
+      'GMM', // El tipo de producto es GMM para este componente
+      filasConError,
+      formato
+    ).subscribe({
+      next: (blob: Blob) => { // Añadido tipo Blob
+        console.log('Descarga iniciada con éxito. Creando URL para el Blob.');
+        // Crear un enlace temporal y simular un clic para descargar el archivo
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const extension = formato === 'excel' ? 'xlsx' : formato;
+        a.download = `errores_${this.nombreArchivo.split('.')[0]}.${extension}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        console.log('Archivo descargado y recursos liberados.');
+      },
+      error: (err: any) => { // Añadido tipo any
+        console.error('Error al descargar el reporte de errores:', err);
+        this.error = err?.error?.detail ?? 'No fue posible descargar el reporte de errores. Intenta de nuevo.';
+        this.cdr.markForCheck();
+      }
     });
   }
 

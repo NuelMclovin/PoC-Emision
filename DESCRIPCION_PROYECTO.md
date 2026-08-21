@@ -60,164 +60,143 @@ Flujo alto nivel:
 
 ## 4.1 Backend
 
-- backend/app/main.py
-  - Que hace: crea y configura la app FastAPI, CORS, routers y healthcheck.
-  - Metodos clave: create_app, endpoint health.
+- **backend/app/main.py**
+  - **Que hace:** Crea y configura la aplicación FastAPI. Es el punto de entrada principal del backend.
+  - **Metodos clave:**
+    - `create_app()`: Inicializa la aplicación FastAPI, configura el título, la versión y la descripción, añade el middleware CORS (utilizando los orígenes permitidos definidos en `config.py`), e incluye los routers de autenticación, validación y casos. También asegura la existencia de los directorios de carga y datos.
+    - `/health` endpoint: Proporciona un chequeo rápido de disponibilidad de la API.
 
-- backend/app/config.py
-  - Que hace: centraliza settings (origenes CORS, upload dir, auth flags, integracion externa).
-  - Metodos clave: parseo de settings, ensure_upload_dir, get_settings.
+- **backend/app/config.py**
+  - **Que hace:** Centraliza todas las configuraciones y ajustes de la aplicación, cargándolos desde variables de entorno o un archivo `.env`.
+  - **Metodos clave:**
+    - `Settings`: Clase Pydantic para definir y validar las variables de configuración como el entorno, nivel de logging, orígenes CORS permitidos (con un validador para parsear listas CSV), directorios de carga y datos, configuración de autenticación mock, y credenciales para servicios externos como Azure Document Intelligence y Azure Service Principal.
+    - `ensure_upload_dir()`: Crea el directorio de carga si no existe.
+    - `ensure_data_dirs()`: Crea los directorios para el almacenamiento local de casos y documentos.
+    - `get_settings()`: Función que usa `lru_cache` para obtener una instancia única y eficiente de la configuración.
 
-- backend/app/routers/auth_router.py
-  - Que hace: login/logout y validacion de token en modo mock.
-  - Metodos clave: endpoints de autenticacion.
+- **backend/app/routers/validacion_router.py**
+  - **Que hace:** Define el endpoint principal para la validación de macros de emisión.
+  - **Metodos clave:**
+    - `validar_macro_endpoint`: Maneja las solicitudes POST al path `/api/v1/validacion/macro`. Recibe un archivo (macro de emisión), el tipo de acción (`nueva` o `renovacion`) y el tipo de producto (`GMM` o `AP`). Realiza validaciones de extensión y tamaño del archivo, invoca a `leer_macro` para procesar el archivo y a `validar_macro` para aplicar las reglas de negocio, devolviendo un `ReporteValidacion` detallado.
 
-- backend/app/routers/validacion_router.py
-  - Que hace: endpoint de validacion de macro; controla tipo/tamano de archivo, invoca lectura y validador.
-  - Metodos clave: validar_macro_endpoint.
+-   **backend/app/services/macro_reader.py**
+    -   **Que hace:** Se encarga de la lectura, normalización y pre-procesamiento de los archivos macro (Excel o CSV) que se suben para validación. Determina el formato del archivo y el layout de AXA a utilizar (GMM/AP, nueva/renovación) para extraer los datos correctamente.
+    -   **Metodos clave:**
+        -   `leer_macro()`: Función principal que orquesta la lectura. Detecta la extensión del archivo (`.xlsx`, `.xls`, `.xlsm`, `.csv`), invoca el método de lectura apropiado (`_leer_excel` o `_leer_csv`), y devuelve un `DataFrame` de Pandas con los datos y el `offset` de filas real para la numeración en el Excel original.
+        -   `_leer_excel()`: Lee archivos Excel, identificando la hoja y la fila de encabezado según el `LAYOUT_MAP` predefinido, y manejando las filas a saltar.
+        -   `_leer_csv()`: Lee archivos CSV, intentando múltiples codificaciones para asegurar la compatibilidad.
+        -   `_normalizar_columnas()`: Estandariza los nombres de las columnas del `DataFrame` (mayúsculas, sin acentos, espacios por guiones bajos) para facilitar el procesamiento por las reglas de negocio.
 
-- backend/app/services/macro_reader.py
-  - Que hace: lectura de XLS/XLSX/XLSM/CSV, normalizacion de columnas y calculo de offset real de fila.
-  - Metodos clave: leer_macro, _leer_excel, _leer_csv, normalizacion de encabezados.
+-   **backend/app/core/reglas_negocio.py**
+    -   **Que hace:** Contiene la implementación de todas las reglas de negocio (RN-00 a RN-09) que se aplican a las macros de emisión. Incluye funciones auxiliares para el manejo de fechas, cálculo de edades y la generación de resultados de validación.
+    -   **Metodos clave:**
+        -   `_calcular_fila_real()`: Convierte el índice de fila del `DataFrame` a la fila real en el archivo Excel original, considerando el `offset` de filas.
+        -   `_parse_fecha()`, `_obtener_razon_rechazo_fecha()`, `_edad()`: Funciones utilitarias para parsear y validar fechas, así como calcular la edad de una persona.
+        -   `regla_columnas_requeridas()` (RN-00): Verifica la presencia de columnas obligatorias.
+        -   `regla_duplicados_persona()` (RN-01): Detecta registros duplicados de personas.
+        -   `regla_fecha_nacimiento()` (RN-02): Valida la fecha de nacimiento (formato, no futura, límites de edad).
+        -   `regla_antiguedad_vs_nacimiento()` (RN-03): Asegura que la fecha de antigüedad no sea anterior a la de nacimiento.
+        -   `regla_certificado_sin_titular()` (RN-04): Verifica que cada certificado tenga un titular.
+        -   `regla_conyuge_unico()` (RN-05): Limita a un cónyuge por certificado.
+        -   `regla_titular_unico()` (RN-06): Limita a un titular por certificado.
+        -   `regla_edad_limite()` (RN-07, RN-08): Aplica las reglas de edad máxima para titulares, cónyuges y beneficiarios, incluyendo excepciones para renovaciones con endoso.
+        -   `regla_tipo_movimiento()` (RN-09): Valida los valores del campo `TIPO_MOVIMIENTO` en macros de renovación.
+        -   `obtener_reglas()`: Función principal que, en base al `tipo_accion` y `tipo_producto`, devuelve una lista de las funciones de reglas de negocio aplicables.
 
-- backend/app/core/reglas_negocio.py
-  - Que hace: define reglas RN-00 a RN-09 y seleccion por tipo de movimiento.
-  - Metodos clave:
-    - obtener_reglas
-    - regla_fecha_nacimiento
-    - regla_edad_limite
-    - regla_tipo_movimiento
-    - utilidades de parseo/normalizacion de fecha y validaciones de campos.
+-   **backend/app/services/validator.py**
+    -   **Que hace:** Actúa como el orquestador principal del proceso de validación. Recibe el `DataFrame` pre-procesado y aplica secuencialmente las reglas de negocio definidas en `reglas_negocio.py` para generar un reporte completo.
+    -   **Metodos clave:**
+        -   `validar_macro()`: Toma el `DataFrame`, el nombre del archivo, el tipo de acción y producto, y el `fila_offset`. Invoca `obtener_reglas` para obtener las reglas pertinentes, las ejecuta, recopila todos los `ResultadoValidacion` y construye un `ReporteValidacion` final que incluye un resumen y la lista detallada de hallazgos.
 
-- backend/app/services/validator.py
-  - Que hace: orquesta ejecucion de reglas por registro y arma el reporte final.
-  - Metodos clave: validar_macro (resumen, conteos y lista de hallazgos).
+-   **backend/app/models/macro_models.py**
+    -   **Que hace:** Define los modelos de datos (utilizando Pydantic) para las estructuras de información utilizadas en el proceso de validación y en las respuestas de la API. Incluye enumeraciones para conceptos clave del dominio.
+    -   **Metodos clave:**
+        -   `Parentesco`, `Genero`, `TipoError`: Enumeraciones que estandarizan los valores para parentescos, géneros y tipos de hallazgos de validación.
+        -   `ResultadoValidacion`: Modelo para representar un hallazgo individual de validación, especificando tipo (error/advertencia), categoría, mensaje, fila, columna y valor afectado.
+        -   `ResumenValidacion`: Modelo que encapsula un resumen estadístico del proceso de validación (total de registros, titulares, dependientes, errores, advertencias, y si la macro es válida).
+        -   `ReporteValidacion`: Modelo de respuesta completa para la validación, que agrupa el nombre del archivo, el resumen y la lista de todos los `ResultadoValidacion`.
+        -   `LoginRequest`, `TokenResponse`: Modelos para la gestión de autenticación mock (solicitud de login y respuesta de token).
 
-- backend/app/models/macro_models.py
-  - Que hace: modelos de respuesta para resultados, resumen y estructura de reporte.
+-   **backend/app/utils/logger.py**
+    -   **Que hace:** Provee una configuración de logging estándar y reutilizable para todo el backend del proyecto.
+    -   **Metodos clave:**
+        -   `get_logger()`: Devuelve una instancia de `logging.Logger` configurada. Asegura que el logger se configure una sola vez (gracias a `@lru_cache`) con un `StreamHandler` que envía los logs a la salida estándar (`sys.stdout`) y un formato predefinido, estableciendo el nivel de logging a `DEBUG`.
 
-- backend/app/utils/logger.py
-  - Que hace: configuracion de logging reutilizable para backend.
 
-- backend/tests/test_validacion.py
-  - Que hace: pruebas de comportamiento del endpoint/reglas de validacion.
+-   **backend/tests/test_validacion.py**
+    -   **Que hace:** Contiene las pruebas unitarias para las reglas de negocio implementadas en el backend. Utiliza el framework `pytest` y `pandas` para simular escenarios y verificar el comportamiento de cada regla de validación.
+    -   **Metodos clave:**
+        -   `_fila()`, `_df()`: Funciones auxiliares para crear datos de prueba de manera sencilla.
+        -   `test_columnas_requeridas_ok()`, `test_columnas_requeridas_falta_certificado()`, etc.: Funciones de prueba que validan las diferentes reglas de negocio (RN-00 a RN-08) en diversos escenarios (casos válidos, con errores, con advertencias, etc.).
+
+
+
+
 
 ## 4.2 Frontend
 
-- frontend/poc-emision-frontend/src/app/app.routes.ts
-  - Que hace: define rutas principales (login, dashboard, nueva GMM, renovacion, reporte).
+- **frontend/poc-emision-frontend/src/app/app.routes.ts**
+  - **Que hace:** Configura las rutas principales de navegación de la aplicación Angular.
+  - **Metodos clave:**
+    - `routes`: Un array de objetos que define las diferentes rutas, incluyendo `login`, `dashboard`, procesos de GMM (`nueva` y `renovacion`), `reporte` y `expediente/:folio`. Utiliza `authGuard` para proteger las rutas que requieren autenticación y carga perezosa (`loadComponent`) para optimizar el rendimiento.
 
-- frontend/poc-emision-frontend/src/app/app.config.ts
-  - Que hace: configuracion global de providers (router, http, interceptor).
+- **frontend/poc-emision-frontend/src/app/components/gmm-proceso/gmm-proceso.ts**
+  - **Que hace:** Es el componente central que orquesta el flujo de carga, validación y visualización de resultados para los procesos de GMM (nueva o renovación).
+  - **Metodos clave:**
+    - `validar()`: Inicia el proceso de validación, enviando el archivo cargado al backend y manejando la respuesta, incluyendo el progreso de carga y análisis.
+    - `onArchivoSeleccionado()`, `onDragOver()`, `onDragLeave()`, `onDropArchivo()`: Métodos para manejar la carga de archivos, tanto por selección como por arrastrar y soltar.
+    - `reiniciarEstado()`: Restablece el componente a su estado inicial, descartando el análisis actual.
+    - `iniciarProgresoSimulado()`, `detenerProgresoSimulado()`: Controlan la simulación de la barra de progreso durante la carga y el análisis.
+    - `cancelarSolicitudActiva()`: Cancela cualquier solicitud HTTP de validación que esté en curso.
+    - `setFiltroResultados()`: Permite filtrar los resultados del reporte (todos, errores, advertencias).
+    - `enviarASuscripcion()`: Gestiona el envío del expediente validado a un servicio de suscripción, creando un caso.
+    - Propiedades computadas: `estaAnalizando`, `estaFinalizado`, `totalErrores`, `totalAdvertencias`, `resumenHallazgos`, entre otras, para controlar la lógica de visualización y el estado de la interfaz.
 
-- frontend/poc-emision-frontend/src/app/app.ts
-  - Que hace: componente raiz y render de navegacion principal.
+-   **frontend/poc-emision-frontend/src/app/services/auth.ts**
+    -   **Que hace:** Gestiona la autenticación del usuario en el frontend. Se encarga de realizar el login, guardar y recuperar el token de autenticación y la información del usuario (nombre de usuario, rol, nombre completo) en el `localStorage` del navegador.
+    -   **Metodos clave:**
+        -   `login()`: Envía las credenciales al backend y, si son válidas, almacena los datos de la sesión.
+        -   `logout()`: Elimina la información de la sesión del `localStorage`.
+        -   `isLoggedIn()`: Verifica si hay una sesión activa.
+        -   `getToken()`, `getUsername()`, `getRol()`, `getNombre()`: Recuperan la información del usuario almacenada.
 
-- frontend/poc-emision-frontend/src/app/components/login/login.ts
-  - Que hace: captura de credenciales y sesion.
+-   **frontend/poc-emision-frontend/src/app/services/validacion.ts**
+    -   **Que hace:** Es el cliente HTTP para interactuar con la API de validación del backend. Permite enviar archivos macro para su análisis y recibir el reporte de validación.
+    -   **Metodos clave:**
+        -   `validarMacro()`: Envía un archivo `File` junto con el tipo de acción y producto al endpoint `/api/v1/validacion/macro` del backend, observando los eventos HTTP para reportar el progreso de la carga.
 
-- frontend/poc-emision-frontend/src/app/components/dashboard/dashboard.ts
-  - Que hace: vista de entrada al portal con accesos a procesos.
+-   **frontend/poc-emision-frontend/src/app/guards/auth-guard.ts**
+    -   **Que hace:** Un *guard* de ruta en Angular que protege el acceso a ciertas partes de la aplicación. Solo permite el acceso a usuarios que estén logueados y que tengan el rol de 'broker', redirigiendo a la página de login si no cumplen estas condiciones.
+    -   **Metodos clave:**
+        -   `authGuard`: Función principal que implementa la lógica de protección de ruta.
 
-- frontend/poc-emision-frontend/src/app/components/portal-shell/portal-shell.ts
-  - Que hace: shell reusable del portal (encabezado, contexto de seccion, contenedor de contenido).
+-   **frontend/poc-emision-frontend/src/app/interceptors/auth.interceptor.ts**
+    -   **Que hace:** Es un interceptor HTTP funcional que añade automáticamente el token de autenticación (Bearer token) a todas las peticiones salientes dirigidas a la API del backend, siempre y cuando exista un token en el `localStorage`.
+    -   **Metodos clave:**
+        -   `authInterceptor`: Función que clona la petición HTTP y añade el encabezado `Authorization`.
 
-- frontend/poc-emision-frontend/src/app/components/gmm-proceso/gmm-proceso.ts
-  - Que hace: flujo principal de carga y validacion.
-  - Metodos clave:
-    - manejo de archivo drag-drop/selector
-    - validar
-    - iniciarProgresoSimulado
-    - cancelarSolicitudActiva
-    - filtros de resultados y resumen inline.
+-   **frontend/poc-emision-frontend/src/app/components/login/login.ts**
+    -   **Que hace:** Componente que gestiona la interfaz de usuario y la lógica para el inicio de sesión. Captura las credenciales del usuario, las envía al `AuthService` y maneja la navegación post-login, así como la visualización de mensajes de error.
+    -   **Metodos clave:**
+        -   `login()`: Método que se ejecuta al intentar iniciar sesión, validando las credenciales y el rol del usuario.
 
-- frontend/poc-emision-frontend/src/app/components/gmm-proceso/gmm-proceso.html
-  - Que hace: UI del proceso, estado de carga, KPIs y tabla de resultados embebida.
 
-- frontend/poc-emision-frontend/src/app/components/gmm-proceso/gmm-proceso.scss
-  - Que hace: estilos del flujo, estados visuales y microanimaciones.
+-   **frontend/poc-emision-frontend/src/app/app.ts**
+    -   **Que hace:** Es el componente raíz de la aplicación Angular. Su función principal es renderizar el `<router-outlet />`, que es donde Angular inyecta los componentes de las rutas activas, sirviendo como el contenedor principal de la aplicación.
+    -   **Metodos clave:** No tiene métodos propios significativos, su rol es estructural.
 
-- frontend/poc-emision-frontend/src/app/components/nueva-gmm/nueva-gmm.ts
-  - Que hace: wrapper para proceso tipo nueva.
+-   **frontend/poc-emision-frontend/src/app/components/dashboard/dashboard.ts**
+    -   **Que hace:** Proporciona la vista de entrada al portal una vez que el usuario ha iniciado sesión. Muestra un resumen de los expedientes del usuario (casos abiertos, por tipo de acción, observados) y permite navegar a los diferentes procesos o ver los detalles de un expediente.
+    -   **Metodos clave:**
+        -   `cargarCasos()`: Obtiene la lista de expedientes del usuario desde el servicio de casos.
+        -   `setFiltro()`: Permite filtrar la lista de expedientes mostrados en el dashboard.
+        -   `abrirProceso()`: Navega al componente de proceso de GMM (nueva o renovación).
+        -   `verExpediente()`: Navega a la vista de detalle de un expediente específico.
 
-- frontend/poc-emision-frontend/src/app/components/renovacion-gmm/renovacion-gmm.ts
-  - Que hace: wrapper para proceso tipo renovacion.
+-   **frontend/poc-emision-frontend/src/app/components/nueva-gmm/nueva-gmm.ts**
+    -   **Que hace:** Es un componente *wrapper* simple que encapsula el `GmmProcesoComponent` para el tipo de acción "nueva" en GMM. Su propósito es definir una ruta específica para este flujo.
+    -   **Metodos clave:** No tiene métodos propios, su función es delegar al `GmmProcesoComponent`.
 
-- frontend/poc-emision-frontend/src/app/components/validacion/validacion.ts
-  - Que hace: componente legacy del flujo anterior; ya no es el camino principal.
-
-- frontend/poc-emision-frontend/src/app/components/reporte/reporte.ts
-  - Que hace: vista legacy de reporte via sessionStorage.
-
-- frontend/poc-emision-frontend/src/app/services/auth.ts
-  - Que hace: autenticacion, estado de sesion y utilidades de token.
-
-- frontend/poc-emision-frontend/src/app/services/validacion.ts
-  - Que hace: cliente HTTP para enviar macro y recibir reporte de validacion.
-
-- frontend/poc-emision-frontend/src/app/guards/auth-guard.ts
-  - Que hace: bloquea navegacion a rutas protegidas sin sesion.
-
-- frontend/poc-emision-frontend/src/app/interceptors/auth.interceptor.ts
-  - Que hace: agrega cabeceras de autenticacion a peticiones HTTP.
-
-## 5) Endpoints y contrato funcional
-
-Autenticacion:
-- Endpoint en backend/app/routers/auth_router.py
-- Uso: login/logout/validacion de sesion mock para habilitar navegacion frontend.
-
-Validacion:
-- Endpoint en backend/app/routers/validacion_router.py
-- Entrada: archivo de macro/layout.
-- Salida:
-  - Resumen: total registros, titulares, dependientes, errores, advertencias, bandera de validez.
-  - Detalle: lista de hallazgos con tipo, categoria, mensaje, fila, columna y valor.
-
-Health:
-- Endpoint en backend/app/main.py
-- Uso: verificacion rapida de disponibilidad de API.
-
-## 6) Ejecucion del proyecto
-
-Con Docker:
-- Usar docker-compose.yml
-- Levanta backend en puerto 8000 y frontend en puerto 4200.
-
-Local:
-- Backend:
-  - Dependencias y scripts en backend/pyproject.toml
-- Frontend:
-  - Dependencias y scripts en frontend/poc-emision-frontend/package.json
-  - Proxy dev en frontend/poc-emision-frontend/proxy.conf.json
-
-## 7) Datos de prueba y layouts
-Carpeta Layout Polizas:
-- Layout Para Emision de Poliza Nueva.xlsm
-- Layout Renovacion Poliza.xlsm
-- Archivos de prueba para escenarios validos y con errores (xlsx/xlsm)
-
-Uso recomendado:
-- Probar ambos procesos (nueva y renovacion).
-- Comparar el resultado esperado de reglas RN con el detalle devuelto por la API.
-
-## 8) Estado actual y notas de mantenimiento
-
-Estado actual:
-- Flujo principal de validacion consolidado en componente gmm-proceso.
-- Resumen y tabla de hallazgos se muestran en la misma pantalla.
-- Manejo de estados de carga y cancelacion robusto.
-
-Coexistencia legacy:
-- Siguen presentes componentes legacy frontend/poc-emision-frontend/src/app/components/validacion/validacion.ts y frontend/poc-emision-frontend/src/app/components/reporte/reporte.ts, utiles para compatibilidad o referencia historica.
-
-Riesgos/deuda tecnica:
-- Specs basicos en frontend validan creacion de componentes/servicios, pero falta cobertura funcional profunda.
-- Hay plantilla inicial de Angular todavia visible en frontend/poc-emision-frontend/src/app/app.html, conviene limpiarla para evitar ruido.
-- Definir estrategia para retirar rutas/componentes legacy cuando se confirme adopcion total del flujo nuevo.
-
-## 9) Recomendaciones de siguiente iteracion
-1. Aumentar pruebas de integracion backend para reglas RN por tipo de movimiento.
-2. Agregar pruebas frontend del flujo completo: carga, estado, respuesta y filtros.
-3. Plan de deprecacion para componentes legacy y rutas antiguas.
-4. Incorporar documentacion de contrato de API en formato OpenAPI/coleccion de pruebas.
+-   **frontend/poc-emision-frontend/src/app/components/renovacion-gmm/renovacion-gmm.ts**
+    -   **Que hace:** Similar a `NuevaGmmComponent`, este es un componente *wrapper* que encapsula el `GmmProcesoComponent` para el tipo de acción "renovación" en GMM, permitiendo una ruta y contexto específicos para este flujo.
+    -   **Metodos clave:** No tiene métodos propios, su función es delegar al `GmmProcesoComponent`.
