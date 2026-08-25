@@ -82,10 +82,13 @@ COLUMNAS_CSV_CRUDO: dict[tuple[str, str], list[str]] = {
 
 ALIAS_COLUMNAS: dict[str, str] = {
     "APELLIDO PATERNO":      "APELLIDO_PATERNO",
+    "APELLIDO PATERNO DEL ASEGURADO": "APELLIDO_PATERNO", # NUEVO
     "APELLIDO MATERNO":      "APELLIDO_MATERNO",
+    "APELLIDO MATERNO DEL ASEGURADO": "APELLIDO_MATERNO", # NUEVO
     "NOMBRE (S)":            "NOMBRE",
     "NOMBRE(S)":             "NOMBRE",
     "NOMBRES":               "NOMBRE",
+    "NOMBRE DEL ASEGURADO":  "NOMBRE",                     # NUEVO
     "FECHA DE NACIMIENTO":   "FECHA_NACIMIENTO",
     "FECHA DE ANTIGUEDAD":   "FECHA_ANTIGUEDAD",
     "FECHA ANTIGUEDAD":      "FECHA_ANTIGUEDAD",
@@ -101,13 +104,15 @@ ALIAS_COLUMNAS: dict[str, str] = {
     "GENERO":                "GENERO",
     "CURP":                  "CURP",
     "SUBGRUPO":              "SUBGRUPO",
+    "NUMERO DEL SUBGRUPO":   "SUBGRUPO",                   # NUEVO
     "CERTIFICADO":           "CERTIFICADO",
+    "NUMERO DE CERTIFICADO": "CERTIFICADO",                # NUEVO
     "PARENTESCO":            "PARENTESCO",
     "NACIONALIDAD":          "NACIONALIDAD",
     "DEBE DECIR":            "DEBE_DECIR",
     "DICE":                  "DICE",
+    "NUMERO DE ENDOSO":      "TIENE_ENDOSO",               # NUEVO (mapea a TIENE_ENDOSO para RN-08)
 }
-
 
 def _quitar_acentos(texto: str) -> str:
     """Elimina diacriticos convirtiendo a ASCII puro (NFD + remove Mn category)."""
