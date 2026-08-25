@@ -29,7 +29,8 @@ TipoProducto = Literal["GMM", "AP"]
 # Mapa de layouts: (tipo_accion, tipo_producto) → (nombre_hoja, fila_header, filas_a_saltar)
 LAYOUT_MAP: dict[tuple[str, str], tuple[str, int, list]] = {
     ("nueva",      "GMM"): ("Layout Poliza Nueva",    7, [7]),        # Salta fila 8 (subtítulos)
-    ("renovacion", "GMM"): ("Layout Renovaciones",    7, [7, 8, 9]), # Salta filas 8, 9, 10
+    #("renovacion", "GMM"): ("Layout Renovaciones",    7, [7, 8, 9]), # Salta filas 8, 9, 10
+    ("renovacion", "GMM"): ("Layout Renovaciones",    1, []),        # No salta nada
     ("nueva",      "AP"):  ("Layout PN AP",            1, []),        # No salta nada
     ("renovacion", "AP"):  ("Layout Renovaciones AP", 1, []),        # No salta nada
 }

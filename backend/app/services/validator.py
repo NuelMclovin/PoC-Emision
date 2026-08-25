@@ -235,7 +235,47 @@ def _obtener_datos_para_exportar(df: pd.DataFrame, resultados: list[ResultadoVal
     return encabezados, filas_con_errores
 
 
-# ... (código existente)
+def _compare_values_robustly(val1, val2, is_numeric_col: bool = False) -> bool:
+    """
+    Compara dos valores de manera robusta, manejando NaN, cadenas y opcionalmente
+    comparación numérica para columnas específicas.
+
+    Args:
+        val1: Primer valor a comparar.
+        val2: Segundo valor a comparar.
+        is_numeric_col: Si es True, intenta comparar numéricamente si ambos son convertibles a float.
+
+    Returns:
+        True si los valores se consideran iguales, False en caso contrario.
+    """
+    # Normalizar a string para una comparación básica y manejo de NaN/None/empty
+    str_val1 = str(val1).strip().lower() if pd.notna(val1) else ""
+    str_val2 = str(val2).strip().lower() if pd.notna(val2) else ""
+
+    # Si las representaciones de cadena normalizadas son idénticas, son iguales
+    if str_val1 == str_val2:
+        return True
+
+    # Si es una columna numérica, intentar comparación numérica
+    if is_numeric_col:
+        try:
+            # Intentar convertir a float. Si falla, no son números comparables de esta forma.
+            num1 = float(val1) if pd.notna(val1) else None
+            num2 = float(val2) if pd.notna(val2) else None
+            
+            # Si ambos son None (o no numéricos y manejados por pd.notna), ya se habrían igualado arriba.
+            # Si ambos son números convertibles, compararlos.
+            if num1 is not None and num2 is not None:
+                return num1 == num2
+        except (ValueError, TypeError):
+            # Si la conversión a float falla para alguno, no son números puros.
+            # En este caso, ya habríamos caído en el `str_val1 == str_val2` si fueran iguales como string.
+            # Si llegamos aquí y no son iguales por string, entonces son diferentes.
+            pass
+    
+    # Si no son iguales por string normalizado ni por comparación numérica (si aplica), son diferentes.
+    return False
+
 
 def _realizar_comparacion(
     df_base: pd.DataFrame,
@@ -357,6 +397,9 @@ def _realizar_comparacion(
 
     # Identificar Modificaciones (en ambos y con cambios en otras columnas)
     modificaciones_df = merged_df[merged_df['_merge'] == 'both']
+
+    # lISTA DE COLUMNAS QUE SE COMPARAN COMO NUMÉRICAS (para comparación robusta)
+    NUMERIC_COMPARISON_COLS = ["SUBGRUPO"] 
     
     for index, row in modificaciones_df.iterrows():
         has_changes = False
@@ -375,21 +418,25 @@ def _realizar_comparacion(
             col_base = f"{col}_base"
             col_nuevo = f"{col}_nuevo"
 
-            valor_base = str(row[col_base]).strip().lower() if pd.notna(row[col_base]) else ""
-            valor_nuevo = str(row[col_nuevo]).strip().lower() if pd.notna(row[col_nuevo]) else ""
+            valor_base_raw = row.get(col_base) # Usar .get para manejar columnas que puedan faltar
+            valor_nuevo_raw = row.get(col_nuevo)
 
-            if valor_base != valor_nuevo:
+            # Determinar si la columna debe ser comparada numéricamente
+            is_numeric = col.upper() in NUMERIC_COMPARISON_COLS
+
+            # Usar la función de comparación robusta
+            if not _compare_values_robustly(valor_base_raw, valor_nuevo_raw, is_numeric_col=is_numeric):
                 has_changes = True
-                cambios_detectados.append(f"'{col}' de '{valor_base}' a '{valor_nuevo}'")
                 
+                # Para el mensaje, usamos los valores raw para que sean exactamente como aparecen en el archivo
                 resultados_comparacion.append(
                     ResultadoValidacion(
                         tipo=TipoError.ADVERTENCIA, # Esto se puede ajustar a ERROR si el cambio de fecha es crítico
                         categoria="COMPARACION_MODIFICACION",
-                        mensaje=f"Cambio en '{col}' para '{nombre_completo}': de '{valor_base}' a '{valor_nuevo}'.",
+                        mensaje=f"Cambio en '{col}' para '{nombre_completo}': de '{valor_base_raw}' a '{valor_nuevo_raw}'.",
                         fila=real_fila_nuevo,
                         columna=col,
-                        valor=str(row[col_nuevo])
+                        valor=str(valor_nuevo_raw) if pd.notna(valor_nuevo_raw) else ""
                     )
                 )
     if not modificaciones_df.empty:
