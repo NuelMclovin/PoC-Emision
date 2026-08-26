@@ -227,37 +227,47 @@ def _leer_excel(
 ) -> tuple[pd.DataFrame, int]:  # ← Retorna también el offset
     clave = (tipo_accion, tipo_producto)
     layout_info = LAYOUT_MAP.get(clave, (None, 7, []))
-    nombre_hoja, fila_header, filas_saltar = layout_info
+    nombre_hoja_configurado, fila_header_configurada, filas_saltar_configuradas = layout_info
 
     try:
         excel = pd.ExcelFile(io.BytesIO(content))
 
-        if nombre_hoja and nombre_hoja in excel.sheet_names:
+        if nombre_hoja_configurado and nombre_hoja_configurado in excel.sheet_names:
             logger.info(
                 "Leyendo hoja oficial '%s' (header en fila %d, saltando filas %s)",
-                nombre_hoja, fila_header, filas_saltar,
+                nombre_hoja_configurado, fila_header_configurada, filas_saltar_configuradas,
             )
             
             df = pd.read_excel(
                 excel,
-                sheet_name=nombre_hoja,
-                header=fila_header - 1,
-                skiprows=filas_saltar,
+                sheet_name=nombre_hoja_configurado,
+                header=fila_header_configurada - 1,
+                skiprows=filas_saltar_configuradas,
+                dtype=str  
             )
         else:
             hoja_fallback = excel.sheet_names[0]
             logger.warning(
                 "Hoja '%s' no encontrada. Usando primera hoja: '%s'",
-                nombre_hoja, hoja_fallback,
+                nombre_hoja_configurado, hoja_fallback,
             )
-            df = pd.read_excel(excel, sheet_name=hoja_fallback)
+            df = pd.read_excel(
+                excel, 
+                sheet_name=hoja_fallback,
+                dtype=str
+            )
 
         df = df.dropna(how="all")
         df = df.loc[:, df.columns.notna()]
         df = df[df.columns[~df.columns.astype(str).str.startswith("Unnamed")]]
         
         # ✅ Calcular offset: fila_header + cantidad de filas saltadas
-        offset = fila_header + len(filas_saltar)
+        # El offset solo tiene sentido si usamos el layout configurado.
+        # Si se usa el fallback, asumimos que el header está en la fila 1 (índice 0)
+        if nombre_hoja_configurado and nombre_hoja_configurado in excel.sheet_names:
+            offset = fila_header_configurada + len(filas_saltar_configuradas)
+        else:
+            offset = 1 # Si es fallback, asumimos header en fila 1, por lo que el offset es 1
         
         return df, offset
 
@@ -265,7 +275,6 @@ def _leer_excel(
         raise ValueError(
             f"Error al leer el archivo Excel '{filename}': {exc}"
         ) from exc
-
 
 def _leer_csv(
     content: bytes,

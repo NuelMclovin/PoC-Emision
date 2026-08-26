@@ -132,7 +132,7 @@ def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str 
     Retorna date si es válida, None si no.
     """
 
-    # ✅ NUEVO: Manejar NaT de pandas
+    # ✅ Manejar NaT de pandas
     if pd.isna(valor):
         return None
     
@@ -142,13 +142,14 @@ def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str 
         except (AttributeError, TypeError):
             return None
         
-        # ✅ NUEVO: Manejar NaT con try-except
+        # Manejar NaT con try-except
         try:
             hora = valor.time() if hasattr(valor, 'time') else None
         except (AttributeError, TypeError):
             hora = None
         
-        # Si tiene hora (no es 00:00:00), rechazar
+        # Si tiene hora (no es 00:00:00 y no es un formato de fecha pura), rechazar
+        # Esta lógica puede ser más estricta si se desea que las fechas no tengan hora
         if hora and hora != datetime.min.time():
             logger.debug(f"  → RECHAZADO: Hora detectada: {hora}")
             return None
@@ -165,22 +166,56 @@ def _parse_fecha(valor: object, parentesco: str | None = None, tipo_accion: str 
         if not val_str or val_str.lower() == "nan":
             return None
         
-        # Acepta separadores '-' y '/' en fechas D/M/Y o Y/M/D.
-        # Normalizamos a '/' para evitar duplicar formatos.
-        normalizada = re.sub(r"\s+", "", val_str).replace("-", "/")
-
-        for fmt in ("%d/%m/%Y", "%Y/%m/%d", "%d/%m/%y"):
+        # --- Lógica de Parseo de Fechas REVISADA ---
+        # 1. Intentar parsear la cadena original (val_str) con los formatos más probables y comunes
+        formats_to_try_exact = (
+            "%Y-%m-%d %H:%M:%S",  # Formato observado en el Excel (con hora)
+            "%Y-%m-%d",           # Formato YYYY-MM-DD (sin hora)
+            "%d-%m-%Y",           # DD-MM-YYYY
+            "%m-%d-%Y",           # MM-DD-YYYY
+            # Otros formatos de fecha/hora que puedan aparecer directamente
+            "%d/%m/%Y %H:%M:%S",
+            "%Y/%m/%d %H:%M:%S",
+            "%m/%d/%Y %H:%M:%S",
+        )
+        
+        for fmt in formats_to_try_exact:
             try:
-                parsed = datetime.strptime(normalizada, fmt).date()
-                
-                logger.debug(f"  → ACEPTADO: {parsed}")
+                parsed = datetime.strptime(val_str, fmt).date()
+                logger.debug(f"  → ACEPTADO (exacto {fmt}): {parsed}")
                 return parsed
             except ValueError:
                 continue
-    
-    logger.debug(f"  → RECHAZADO: No coincide con ningún formato")
-    return None
+        
+        # 2. Si el parseo exacto falla, intentar una normalización suave:
+        #    Reemplazar guiones por barras, pero manteniendo otros espacios.
+        #    Esto es para compatibilidad con los formatos originales que usaban barras.
+        normalizada_guiones_a_barras = val_str.replace("-", "/")
+        
+        formats_to_try_normalized = (
+            "%d/%m/%Y",           # DD/MM/YYYY
+            "%Y/%m/%d",           # YYYY/MM/DD
+            "%d/%m/%y",           # DD/MM/YY
+            "%m/%d/%Y",           # MM/DD/YYYY
+        )
 
+        for fmt in formats_to_try_normalized:
+            try:
+                parsed = datetime.strptime(normalizada_guiones_a_barras, fmt).date()
+                logger.debug(f"  → ACEPTADO (normalizado {fmt}): {parsed}")
+                return parsed
+            except ValueError:
+                continue
+        
+        # 3. Si todo lo anterior falla, entonces y solo entonces, intentar una normalización
+        #    más agresiva que elimine todos los espacios, por si hay formatos muy sucios
+        #    que no siguen un patrón claro y necesitan una limpieza profunda,
+        #    pero es importante que los formatos que esperan espacios (como los de hora)
+        #    se prueben antes de esta normalización agresiva.
+        #    Por ahora, nos centraremos en los formatos limpios.
+        
+    logger.debug(f"  → RECHAZADO: No coincide con ningún formato de fecha conocido para '{val_str}'")
+    return None
 
 def _obtener_razon_rechazo_fecha(valor: object, parentesco: str | None = None, tipo_accion: str = "nueva") ->str:
     """
