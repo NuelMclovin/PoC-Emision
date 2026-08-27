@@ -88,31 +88,56 @@ def validar_y_comparar_macros(
 
     resultados_consolidados: list[ResultadoValidacion] = []
     
+    # --- NUEVO: Definir categorías de errores tolerables para el archivo base ---
+    # Estos errores no bloquearán la continuación del proceso, pero se convertirán
+    # en advertencias en el reporte final para su visibilidad.
+    TOLERABLE_BASE_ERROR_CATEGORIES = [
+        "Edad fuera de límite",
+        "Fecha de nacimiento",
+    ]
+    # Si hubiera otras categorías de errores que no deban bloquear, agrégalas aquí.
+
     # 1. Validar archivo base
     reporte_base = validar_macro(
         filename_base, df_base, tipo_accion, tipo_producto, fila_offset_base
     )
 
-    if not reporte_base.resumen.es_valida:
-        # Si el archivo base tiene errores, no se puede usar para la comparación
-        logger.warning("Archivo base '%s' contiene errores. No se puede proceder con la comparación.", filename_base)
+    # --- NUEVO: Evaluar si el archivo base tiene errores CRÍTICOS (no tolerables) ---
+    base_has_critical_errors = False
+
+# --- TEMPORAL: Imprimir todas las categorías de errores del reporte base para depuración ---
+    logger.debug(f"Categorías de errores en reporte_base antes de filtrar: {[res.categoria for res in reporte_base.resultados if res.tipo == TipoError.ERROR]}")
+# --- FIN TEMPORAL ---
+
+    # --- NUEVO: Evaluar si el archivo base tiene errores CRÍTICOS (no tolerables) ---
+    base_has_critical_errors = False
+    for res in reporte_base.resultados:
+        if res.tipo == TipoError.ERROR and res.categoria not in TOLERABLE_BASE_ERROR_CATEGORIES:
+            base_has_critical_errors = True
+            break
+            
+    if base_has_critical_errors:
+        logger.warning("Archivo base '%s' contiene errores críticos que impiden la comparación. Por favor, corrige el archivo base primero.", filename_base)
         
         # Generar un reporte de error para el archivo nuevo, indicando el problema con la base
         error_base_invalida = ResultadoValidacion(
             tipo=TipoError.ERROR,
             categoria="BASE_INVALIDA",
-            mensaje=f"El archivo base '{filename_base}' contiene errores ({reporte_base.resumen.total_errores}) y no puede ser utilizado para la comparación de renovación. Por favor, corrige el archivo base primero.",
+            mensaje=f"El archivo base '{filename_base}' contiene errores críticos y no puede ser utilizado para la comparación de renovación. Por favor, corrige el archivo base primero.",
         )
         resultados_consolidados.append(error_base_invalida)
-        resultados_consolidados.extend(reporte_base.resultados) # Incluir los errores del archivo base en el reporte final
+        
+        # Añadir todos los resultados del reporte base (incluyendo errores tolerables y no tolerables)
+        resultados_consolidados.extend(reporte_base.resultados) 
 
+        
         # Crear un resumen de error para el archivo nuevo
         resumen_final = ResumenValidacion(
-            total_registros=len(df_nuevo),
+            total_registros=len(df_nuevo), # Se refiere a los registros del archivo nuevo
             total_titulares=0, # No podemos calcular esto si la base es invalida
             total_dependientes=0,
-            total_errores=1 + reporte_base.resumen.total_errores, # 1 error por la base invalida + los errores de la base
-            total_advertencias=reporte_base.resumen.total_advertencias,
+            total_errores=len([r for r in resultados_consolidados if r.tipo == TipoError.ERROR]),
+            total_advertencias=len([r for r in resultados_consolidados if r.tipo == TipoError.ADVERTENCIA]),
             es_valida=False,
         )
 
@@ -127,6 +152,15 @@ def validar_y_comparar_macros(
             offset_filas=fila_offset_nuevo,
         )
 
+    # --- NUEVO: Si no hay errores críticos en el archivo base, procesamos sus resultados ---
+    # Convertir los errores tolerables del archivo base en advertencias para el reporte final
+    for res in reporte_base.resultados:
+        if res.tipo == TipoError.ERROR and res.categoria in TOLERABLE_BASE_ERROR_CATEGORIES:
+            res.tipo = TipoError.ADVERTENCIA
+            res.categoria = f"BASE_ADVERTENCIA_{res.categoria.replace(' ', '_').upper()}" # Nueva categoría para diferenciar
+            res.mensaje = f"Advertencia (Archivo Base - {res.categoria.replace('BASE_ADVERTENCIA_', '').replace('_', ' ').title()}): {res.mensaje}. Este dato se procesará con documentación adicional."
+        resultados_consolidados.append(res) # Añadir todos los resultados (originales o modificados) del base
+
     # 2. Validar archivo nuevo (reglas de negocio estándar)
     reporte_nuevo = validar_macro(
         filename_nuevo, df_nuevo, tipo_accion, tipo_producto, fila_offset_nuevo
@@ -138,7 +172,7 @@ def validar_y_comparar_macros(
     # Si no existe, se podría usar una combinación de 'NOMBRE' + 'FECHA_NACIMIENTO' o 'ID_EMPLEADO'.
     # Es crucial que esta columna sea consistente y única.
     identificador_clave = "CERTIFICADO" # <-- Ajustar según el layout real
-
+    
     # NOTA: La validación de 'identificador_clave' individual aquí ya no es tan crítica
     # porque la lógica de `_realizar_comparacion` ahora usa una clave compuesta
     # y valida la existencia de esas columnas. Sin embargo, se mantiene por si
@@ -183,7 +217,7 @@ def validar_y_comparar_macros(
         offset_filas=fila_offset_nuevo,
     )
 
-# --- Funciones auxiliares movidas/creadas ---
+
 
 def _calcular_resumen(df: pd.DataFrame, resultados: list[ResultadoValidacion]) -> ResumenValidacion:
     """Calcula el resumen de validación a partir del DataFrame y los resultados."""

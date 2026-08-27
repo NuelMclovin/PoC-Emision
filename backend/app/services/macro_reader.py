@@ -76,6 +76,55 @@ COLUMNAS_CSV_CRUDO: dict[tuple[str, str], list[str]] = {
 }
 
 
+
+COLUMNAS_ESTRUCTURA_HISTORICO = [
+    "NUMERO DE POLIZA",
+    "NOMBRE DEL ASEGURADO",
+    "APELLIDO PATERNO DEL ASEGURADO",
+    "APELLIDO MATERNO DEL ASEGURADO",
+    "EDAD",
+    "FECHA DE ALTA",
+    "FECHA DE BAJA",
+    "PARENTESCO",
+    "ESTATUS DEL ASEGURADO",
+    "NUMERO DEL SUBGRUPO",
+    "NUMERO DE CERTIFICADO",
+    "FECHA DE ANTIGUEDAD",
+    "FECHA DE NACIMIENTO",
+    "SEXO",
+    "NUMERO DE ENDOSO",
+    "NOMINA",
+    "TIPO DE MOVIMIENTO",
+    "ESTATUS DEL MOVIMIENTO",
+    "NUMERO DE EMPLEADO",
+    "CORREO ELECTRONICO",
+    "RFC",
+    "CURP",
+    "CLAVE DEL POOL",
+    "NOMBRE DEL POOL",
+    "NOMBRE DEL CONTRATANTE",
+    "NOMBRE DEL SUBGRUPO",
+    "IDENTIFICACION",
+]
+
+COLUMNAS_REQUERIDAS_ACTUAL_RENOVACION = {
+    "APELLIDO PATERNO",
+    "APELLIDO MATERNO",
+    "NOMBRE (S)",
+    "FECHA DE NACIMIENTO",
+    "CERTIFICADO",
+    "GENERO",
+    "PARENTESCO",
+    "FECHA DE ANTIGÜEDAD",
+    "SUBGRUPO",
+    "POLIZA",
+}
+
+ALIAS_COLUMNAS_EXTENDIDO = {
+    "NOMBRE DEL ASEGURADO"
+}
+
+
 # ─── Normalizacion de nombres de columna ──────────────────────────────────────
 # Todas las claves estan en ASCII MAYUSCULAS sin acentos.
 # La funcion _quitar_acentos convierte primero el nombre antes del lookup.
