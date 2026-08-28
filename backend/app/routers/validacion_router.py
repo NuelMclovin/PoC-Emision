@@ -16,8 +16,8 @@ from typing import Any, Dict, List
 
 from ..services.exporter import exportar_errores
 from ..models.macro_models import ReporteValidacion # Importar ReporteValidacion
-from ..services.macro_reader import leer_macro
-from ..services.validator import validar_macro, validar_y_comparar_macros # <-- Importar la nueva función de validación y comparación
+from ..services.macro_reader import leer_base_renovacion, leer_macro
+from ..services.validator import validar_base_renovacion, validar_macro, validar_y_comparar_macros
 from ..utils.logger import get_logger
 
 logger = get_logger()
@@ -78,6 +78,25 @@ async def validar_macro_endpoint(
 
 
 @router.post(
+    "/renovacion/base",
+    response_model=ReporteValidacion,
+    summary="Valida la estructura del archivo base de renovación",
+)
+async def validar_base_renovacion_endpoint(
+    archivo: UploadFile = File(..., description="Archivo histórico base de renovación"),
+) -> ReporteValidacion:
+    content = await _validar_archivo_general(archivo, "archivo_base")
+    filename = archivo.filename or "archivo_base"
+
+    try:
+        df, offset = leer_base_renovacion(filename, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+    return validar_base_renovacion(filename, df, offset)
+
+
+@router.post(
     "/renovacion-con-base", # <-- NUEVO ENDPOINT
     response_model=ReporteValidacion,
     summary="Valida y compara una macro de renovación con un archivo base",
@@ -106,7 +125,7 @@ async def renovacion_con_base_endpoint(
 
     try:
         df_nuevo, offset_nuevo = leer_macro(filename_nuevo, content_nuevo, tipo_accion=tipo_accion, tipo_producto=tipo_producto)
-        df_base, offset_base = leer_macro(filename_base, content_base, tipo_accion=tipo_accion, tipo_producto=tipo_producto)
+        df_base, offset_base = leer_base_renovacion(filename_base, content_base)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 

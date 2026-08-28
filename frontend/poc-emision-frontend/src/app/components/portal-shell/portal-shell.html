@@ -1,12 +1,13 @@
-<div class="dashboard-shell" [class.menu-colapsado]="menuColapsado">
+<div class="dashboard-shell" [class.menu-colapsado]="menuColapsado" [class.menu-movil-abierto]="menuMovilAbierto">
+  <button class="sidebar-backdrop" type="button" aria-label="Cerrar menú" (click)="cerrarMenuMovil()"></button>
   <aside class="sidebar">
     <div class="sidebar-brand">
-  <button class="collapse-button" type="button" (click)="toggleMenu()" aria-label="Colapsar menu">
+  <button class="collapse-button" type="button" (click)="toggleMenu()" [attr.aria-expanded]="!menuColapsado" aria-label="Mostrar u ocultar menú">
     <span></span>
     <span></span>
     <span></span>
   </button>
-  <div class="logo-area" *ngIf="!menuColapsado"> <!-- ¡AGREGADO *ngIf="!menuColapsado" AQUÍ! -->
+  <div class="logo-area" *ngIf="!menuColapsado">
     <div class="logo-icon">PE</div>
     <div class="brand-copy">
       <strong>Portal de Emision</strong>
@@ -17,12 +18,12 @@
 
     <nav class="sidebar-nav">
       <button type="button" class="nav-item" [class.active]="seccionActiva === 'dashboard'" (click)="irASeccion('dashboard')">
-        <span class="nav-icon">◌</span>
+        <span class="nav-icon">⌂</span>
         <span *ngIf="!menuColapsado">Dashboard</span>
       </button>
 
       <button type="button" class="nav-item" [class.active]="seccionActiva === 'nueva'" (click)="irASeccion('nueva')">
-        <span class="nav-icon">+</span>
+        <span class="nav-icon">＋</span>
         <span *ngIf="!menuColapsado">Nueva GMM</span>
       </button>
 
@@ -43,15 +44,19 @@
 
   <div class="dashboard-main">
     <header class="topbar">
+      <button class="mobile-menu-button" type="button" (click)="toggleMenuMovil()" [attr.aria-expanded]="menuMovilAbierto" aria-label="Abrir menú">
+        <span></span><span></span><span></span>
+      </button>
       <div>
-        <p class="eyebrow">Portal de emision</p>
+        <p class="eyebrow">Portal de emisión <span class="topbar-dot"></span> GMM colectivo</p>
         <h1>{{ titulo }}</h1>
         <p class="topbar-copy" *ngIf="subtitulo">{{ subtitulo }}</p>
       </div>
 
       <div class="topbar-actions">
         <div class="topbar-status-item">
-          <span class="status-label">Abiertos</span>
+          <span class="status-dot"></span>
+          <span class="status-label">Casos abiertos</span>
           <span class="status-value">{{ totalAbiertos }}</span>
         </div>
         <div class="topbar-user-menu">

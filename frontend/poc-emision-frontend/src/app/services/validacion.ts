@@ -25,7 +25,10 @@ export interface ResultadoValidacion {
   mensaje: string;
   fila?: number;
   columna?: string;
+  columnas_afectadas?: string[];
   valor?: string;
+  tipo_movimiento?: 'Cambio' | 'Alta' | 'Baja' | 'Vigente';
+  detalle?: string;
 }
 
 // Modelo de reporte completo
@@ -51,6 +54,15 @@ export class ValidacionService {
     formData.append('tipo_producto', tipoProducto);
     const url = '/api/v1/validacion/macro';
     return this.http.post(url, formData, {
+      observe: 'events',
+      reportProgress: true
+    });
+  }
+
+  validarBaseRenovacion(archivo: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('archivo', archivo, archivo.name);
+    return this.http.post('/api/v1/validacion/renovacion/base', formData, {
       observe: 'events',
       reportProgress: true
     });

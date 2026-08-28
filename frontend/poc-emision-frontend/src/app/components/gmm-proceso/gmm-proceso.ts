@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Input, OnDestroy, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, Input, OnDestroy, ViewChild } from '@angular/core';
 import { HttpEventType, HttpResponse } from '@angular/common/http';
 import { Subscription, finalize, timeout } from 'rxjs';
 import { PortalShellComponent } from '../portal-shell/portal-shell';
@@ -33,6 +33,9 @@ export class GmmProcesoComponent implements OnDestroy {
   reporteActual: ReporteValidacion | null = null;
   mostrarResumen = false;
   filtroResultados: 'todos' | 'error' | 'advertencia' = 'todos';
+  filtroTipoColumna: 'todos' | ResultadoValidacion['tipo'] = 'todos';
+  filtroMovimiento = 'todos';
+  filtroCategoria = 'todos';
   arrastrandoArchivo = false;
 
   private temporizadorProgreso: ReturnType<typeof setInterval> | null = null;
@@ -55,7 +58,10 @@ export class GmmProcesoComponent implements OnDestroy {
   encabezados: string[] = [];
   filasConErrores: any[] = [];
 
-  constructor(private validacionSvc: ValidacionService) {}
+  constructor(
+    private validacionSvc: ValidacionService,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   get totalAbiertos(): number {
     return EXPEDIENTES_MOCK.filter((expediente) => expediente.estado !== 'Completado').length;
@@ -127,11 +133,52 @@ export class GmmProcesoComponent implements OnDestroy {
       return [];
     }
 
-    if (this.filtroResultados === 'todos') {
-      return this.reporteActual.resultados;
-    }
+    return this.reporteActual.resultados.filter((resultado) => {
+      const coincideTipoColumna = this.filtroTipoColumna === 'todos' || resultado.tipo === this.filtroTipoColumna;
+      const movimiento = resultado.tipo_movimiento ?? '';
+      const coincideMovimiento = this.filtroMovimiento === 'todos' || movimiento === this.filtroMovimiento;
+      const columnas = this.columnasDelResultado(resultado);
+      const coincideColumna = this.filtroCategoria === 'todos' || columnas.includes(this.filtroCategoria);
+      return coincideTipoColumna && coincideMovimiento && coincideColumna;
+    });
+  }
 
-    return this.reporteActual.resultados.filter((resultado) => resultado.tipo === this.filtroResultados);
+  get opcionesTiposResultado(): ResultadoValidacion['tipo'][] {
+    return this.opcionesUnicas(this.resultadosSinFiltro('tipo').map((resultado) => resultado.tipo)) as ResultadoValidacion['tipo'][];
+  }
+
+  get opcionesMovimientos(): string[] {
+    return this.opcionesUnicas(this.resultadosSinFiltro('movimiento').map((resultado) => resultado.tipo_movimiento).filter(Boolean) as string[]);
+  }
+
+  get opcionesCategorias(): string[] {
+    return this.opcionesUnicas(this.resultadosSinFiltro('categoria').flatMap((resultado) => this.columnasDelResultado(resultado)));
+  }
+
+  columnasDelResultado(resultado: ResultadoValidacion): string[] {
+    return resultado.columnas_afectadas?.length
+      ? resultado.columnas_afectadas
+      : resultado.columna
+        ? [resultado.columna]
+        : [];
+  }
+
+  private resultadosSinFiltro(excluir: 'tipo' | 'movimiento' | 'categoria'): ResultadoValidacion[] {
+    return (this.reporteActual?.resultados ?? []).filter((resultado) => {
+      const coincideTipo = excluir === 'tipo' || this.filtroTipoColumna === 'todos' || resultado.tipo === this.filtroTipoColumna;
+      const movimiento = resultado.tipo_movimiento ?? '';
+      const coincideMovimiento = excluir === 'movimiento' || this.filtroMovimiento === 'todos' || movimiento === this.filtroMovimiento;
+      const coincideColumna = excluir === 'categoria' || this.filtroCategoria === 'todos' || this.columnasDelResultado(resultado).includes(this.filtroCategoria);
+      return coincideTipo && coincideMovimiento && coincideColumna;
+    });
+  }
+
+  private opcionesUnicas(valores: string[]): string[] {
+    return [...new Set(valores)].sort((a, b) => a.localeCompare(b));
+  }
+
+  etiquetaTipoResultado(tipo: ResultadoValidacion['tipo']): string {
+    return tipo === 'error' ? 'Error' : tipo === 'advertencia' ? 'Advertencia' : 'Información';
   }
 
   get totalErrores(): number {
@@ -140,6 +187,14 @@ export class GmmProcesoComponent implements OnDestroy {
 
   get totalAdvertencias(): number {
     return this.reporteActual?.resultados.filter((resultado: ResultadoValidacion) => resultado.tipo === 'advertencia').length ?? 0;
+  }
+
+  get totalRegistrosConCambios(): number {
+    return new Set(
+      this.reporteActual?.resultados
+        .filter((resultado) => resultado.tipo_movimiento === 'Cambio')
+        .map((resultado) => resultado.fila ?? resultado.valor),
+    ).size;
   }
 
   get resumenHallazgos(): string {
@@ -323,12 +378,17 @@ export class GmmProcesoComponent implements OnDestroy {
       this.reporteActual = null;
       this.mostrarResumen = false;
       this.filtroResultados = 'todos';
+      this.limpiarFiltrosColumnas();
       this.progresoValidacion = 6;
       this.mensajeCarga = `Cargando datos ${this.progresoBoton}%`;
     }
     this.iniciarProgresoSimulado(isBaseFile);
 
-    this.solicitudActiva = this.validacionSvc.validarMacro(fileToValidate, this.tipoAccion, 'GMM').pipe(
+    const validacion$ = isBaseFile
+      ? this.validacionSvc.validarBaseRenovacion(fileToValidate)
+      : this.validacionSvc.validarMacro(fileToValidate, this.tipoAccion, 'GMM');
+
+    this.solicitudActiva = validacion$.pipe(
       timeout(120000),
       finalize(() => {
         this.detenerProgresoSimulado(isBaseFile);
@@ -348,6 +408,7 @@ export class GmmProcesoComponent implements OnDestroy {
             this.etapaRenovacion = 'errorRenovacion';
           }
         }
+        this.cdr.detectChanges();
       }),
     ).subscribe({
       next: (evento) => {
@@ -429,6 +490,7 @@ export class GmmProcesoComponent implements OnDestroy {
           this.mensajeCarga = 'No se pudo completar el análisis del nuevo archivo';
           this.etapaRenovacion = 'errorRenovacion';
         }
+        this.cdr.detectChanges();
       },
     });
   }
@@ -442,6 +504,7 @@ export class GmmProcesoComponent implements OnDestroy {
     this.reporteActual = null;
     this.mostrarResumen = false;
     this.filtroResultados = 'todos';
+    this.limpiarFiltrosColumnas();
     this.progresoValidacion = 6;
     this.mensajeCarga = 'Cargando y comparando archivos...';
     this.etapaRenovacion = 'comparando';
@@ -458,6 +521,7 @@ export class GmmProcesoComponent implements OnDestroy {
           this.mensajeCarga = 'No se pudo completar la comparación';
           this.etapaRenovacion = 'errorRenovacion';
         }
+        this.cdr.detectChanges();
       }),
     ).subscribe({
       next: (evento) => {
@@ -501,16 +565,55 @@ export class GmmProcesoComponent implements OnDestroy {
         this.progresoValidacion = 0;
         this.mensajeCarga = 'No se pudo completar la comparación';
         this.etapaRenovacion = 'errorRenovacion';
-},
+        this.cdr.detectChanges();
+      },
     });
   }
 
   setFiltroResultados(filtro: 'todos' | 'error' | 'advertencia'): void {
     this.filtroResultados = filtro;
+    this.filtroTipoColumna = filtro;
+  }
+
+  actualizarFiltroTipo(tipo: 'todos' | ResultadoValidacion['tipo']): void {
+    this.filtroTipoColumna = tipo;
+    this.filtroResultados = tipo === 'error' || tipo === 'advertencia' ? tipo : 'todos';
+    this.ajustarFiltroMovimiento();
+    this.ajustarFiltroCategoria();
+  }
+
+  actualizarFiltroMovimiento(movimiento: string): void {
+    this.filtroMovimiento = movimiento;
+    this.ajustarFiltroCategoria();
+  }
+
+  actualizarFiltroCategoria(categoria: string): void {
+    this.filtroCategoria = categoria;
+    this.ajustarFiltroMovimiento();
+  }
+
+  private ajustarFiltroMovimiento(): void {
+    const opciones = this.opcionesMovimientos;
+    if (this.filtroMovimiento !== 'todos' && !opciones.includes(this.filtroMovimiento)) {
+      this.filtroMovimiento = 'todos';
+    }
+  }
+
+  private ajustarFiltroCategoria(): void {
+    const opciones = this.opcionesCategorias;
+    if (this.filtroCategoria !== 'todos' && !opciones.includes(this.filtroCategoria)) {
+      this.filtroCategoria = 'todos';
+    }
+  }
+
+  limpiarFiltrosColumnas(): void {
+    this.filtroTipoColumna = 'todos';
+    this.filtroMovimiento = 'todos';
+    this.filtroCategoria = 'todos';
   }
 
   obtenerClaseResultado(tipo: ResultadoValidacion['tipo']): string {
-    return tipo === 'advertencia' ? 'advertencia' : 'error';
+    return tipo === 'advertencia' ? 'advertencia' : tipo === 'info' ? 'info' : 'error';
   }
 
   // Modificado para aceptar un flag `esArchivoBase`
@@ -550,6 +653,8 @@ export class GmmProcesoComponent implements OnDestroy {
     if (this.tipoAccion === 'nueva') {
         this.validar();
     }
+
+    this.cdr.detectChanges();
   }
 
   // Modificado para aceptar un flag `esArchivoBase`

@@ -151,6 +151,7 @@ ALIAS_COLUMNAS: dict[str, str] = {
     "NUMERO DE POLIZA":      "NUMERO_POLIZA",
     "POLIZA":                "NUMERO_POLIZA",
     "GENERO":                "GENERO",
+    "SEXO":                  "GENERO",
     "CURP":                  "CURP",
     "SUBGRUPO":              "SUBGRUPO",
     "NUMERO DEL SUBGRUPO":   "SUBGRUPO",                   # NUEVO
@@ -188,12 +189,52 @@ def _normalizar_nombre_col(nombre: str) -> str:
 
 
 def _normalizar_columnas(df: pd.DataFrame) -> pd.DataFrame:
+    nombres_originales = list(df.columns)
+    valores_originales: dict[str, list] = {}
+    for indice, nombre in enumerate(nombres_originales):
+        nombre_normalizado = _normalizar_nombre_col(nombre)
+        if nombre_normalizado not in valores_originales:
+            valores_originales[nombre_normalizado] = df.iloc[:, indice].tolist()
+    df.attrs["valores_originales"] = valores_originales
     df.columns = [_normalizar_nombre_col(c) for c in df.columns]
 
-    # NUEVO
     if "PARENTESCO" in df.columns:
-        df["PARENTESCO"] =  df["PARENTESCO"].str.strip().str.capitalize()
+        df["PARENTESCO"] = df["PARENTESCO"].apply(
+            lambda valor: str(valor).strip().capitalize() if pd.notna(valor) else valor
+        )
+        if "GENERO" in df.columns:
+            df["PARENTESCO"] = [
+                _parentesco_segun_sexo(parentesco, genero)
+                for parentesco, genero in zip(df["PARENTESCO"], df["GENERO"])
+            ]
     return df
+
+
+def _parentesco_segun_sexo(parentesco: object, genero: object) -> object:
+    """Devuelve el parentesco con genero y formato de usuario."""
+    if pd.isna(parentesco):
+        return parentesco
+
+    parentesco_normalizado = _quitar_acentos(str(parentesco)).strip().lower()
+    parentesco_normalizado = parentesco_normalizado.replace("(a)", "").replace("(o)", "")
+    parentesco_normalizado = parentesco_normalizado.replace(" ", "")
+    sexo = _quitar_acentos(str(genero)).strip().lower() if pd.notna(genero) else ""
+    es_femenino = sexo in {"f", "femenino", "mujer", "mujeres"}
+    es_masculino = sexo in {"m", "masculino", "h", "hombre", "varon", "varón"}
+
+    if parentesco_normalizado in {"conyuge", "esposo", "esposa"}:
+        return "Esposa" if es_femenino else "Esposo" if es_masculino else "Esposo"
+    if parentesco_normalizado in {"hijo", "hija"}:
+        return "Hija" if es_femenino else "Hijo" if es_masculino else "Hijo"
+    if parentesco_normalizado in {"hermano", "hermana"}:
+        return "Hermana" if es_femenino else "Hermano" if es_masculino else "Hermano"
+    if parentesco_normalizado in {"padre", "madre"}:
+        return "Madre" if es_femenino else "Padre" if es_masculino else "Padre"
+    if parentesco_normalizado == "titular":
+        return "Titular"
+    if parentesco_normalizado == "beneficiario":
+        return "Beneficiaria" if es_femenino else "Beneficiario" if es_masculino else "Beneficiario"
+    return str(parentesco).strip().capitalize()
 
 
 def _detectar_encoding(data: bytes) -> str:
@@ -266,6 +307,59 @@ def leer_macro(
         filename, tipo_accion, tipo_producto, len(df), list(df.columns),
     )
     return df, offset
+
+
+def leer_base_renovacion(filename: str, content: bytes) -> tuple[pd.DataFrame, int]:
+    """Lee la base historica de renovacion sin depender del layout de emision."""
+    ext = ("." + filename.rsplit(".", 1)[-1].lower()) if "." in filename else ""
+
+    if ext == ".csv":
+        df = _leer_csv(content, tipo_accion="renovacion", tipo_producto="GMM")
+        offset = 1
+    elif ext in {".xlsx", ".xls", ".xlsm"}:
+        df, offset = _leer_excel_base_renovacion(filename, content)
+    else:
+        raise ValueError(f"Formato '{ext}' no soportado. Use .xlsx, .xls, .xlsm o .csv")
+
+    if df.empty:
+        raise ValueError("El archivo no contiene registros.")
+
+    df = _normalizar_columnas(df).reset_index(drop=True)
+    logger.info("Base de renovacion '%s' leida: %d filas, columnas: %s", filename, len(df), list(df.columns))
+    return df, offset
+
+
+def _leer_excel_base_renovacion(filename: str, content: bytes) -> tuple[pd.DataFrame, int]:
+    """Encuentra encabezados historicos aunque la hoja no se llame como el layout oficial."""
+    try:
+        excel = pd.ExcelFile(io.BytesIO(content))
+        encabezados_requeridos = {
+            _normalizar_nombre_col("NUMERO DE POLIZA"),
+            _normalizar_nombre_col("NOMBRE DEL ASEGURADO"),
+            _normalizar_nombre_col("NUMERO DE CERTIFICADO"),
+            _normalizar_nombre_col("FECHA DE NACIMIENTO"),
+        }
+
+        for hoja in excel.sheet_names:
+            muestra = pd.read_excel(excel, sheet_name=hoja, header=None, nrows=30, dtype=str)
+            for indice, fila in muestra.iterrows():
+                columnas = {
+                    _normalizar_nombre_col(valor)
+                    for valor in fila.tolist()
+                    if pd.notna(valor) and str(valor).strip()
+                }
+                if len(columnas & encabezados_requeridos) >= 3:
+                    df = pd.read_excel(excel, sheet_name=hoja, header=int(indice), dtype=str)
+                    df = df.dropna(how="all")
+                    df = df.loc[:, df.columns.notna()]
+                    df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
+                    return df, int(indice) + 1
+
+        raise ValueError("No se encontraron los encabezados de la base historica de renovacion.")
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(f"Error al leer el archivo Excel '{filename}': {exc}") from exc
 
 
 def _leer_excel(

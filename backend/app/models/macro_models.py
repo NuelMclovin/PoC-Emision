@@ -39,7 +39,10 @@ class ResultadoValidacion(BaseModel):
     mensaje: str
     fila: Optional[int] = None          # número de fila en el Excel (1-based header)
     columna: Optional[str] = None       # nombre de la columna afectada
+    columnas_afectadas: Optional[List[str]] = None
     valor: Optional[str] = None         # valor que causó el problema
+    tipo_movimiento: Optional[str] = None
+    detalle: Optional[str] = None
 
 
 # ─── Resumen del reporte de validación ────────────────────────────────────────

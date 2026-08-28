@@ -428,10 +428,34 @@
 }
 
 .inline-table-wrapper {
+  max-height: clamp(280px, 58vh, 620px);
+  overflow: auto;
   overflow-x: auto;
   border: 1px solid #edf1f7;
   border-radius: 16px;
   background: #fff;
+  scrollbar-color: #b8c2dc #f3f5fa;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f3f5fa;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #b8c2dc;
+    border: 2px solid #f3f5fa;
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: #8d9abc;
+  }
 }
 
 .inline-table {
@@ -448,11 +472,40 @@
   }
 
   th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     font-size: 0.76rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #697792;
     background: #fafbff;
+
+    span {
+      display: block;
+      margin-bottom: 0.45rem;
+    }
+
+    select {
+      width: 100%;
+      min-width: 7.5rem;
+      padding: 0.42rem 1.65rem 0.42rem 0.55rem;
+      border: 1px solid #dce3ef;
+      border-radius: 8px;
+      background: #fff;
+      color: #253453;
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-transform: none;
+      cursor: pointer;
+
+      &:focus {
+        outline: 2px solid rgba(43, 51, 191, 0.2);
+        border-color: #2b33bf;
+      }
+    }
   }
 
   tr:last-child td {
@@ -465,6 +518,10 @@
 
   tr.row-advertencia td {
     background: #fffdf5;
+  }
+
+  tr.row-info td {
+    background: #f5faff;
   }
 }
 
@@ -486,6 +543,11 @@
     color: #9a5c00;
     background: rgba(244, 165, 36, 0.16);
   }
+
+  &.badge-info {
+    color: #23658f;
+    background: rgba(35, 137, 196, 0.12);
+  }
 }
 
 .empty-inline-report {
@@ -493,6 +555,23 @@
   border-radius: 14px;
   background: #f8fbff;
   color: #697792;
+
+  .clear-inline-filters {
+    margin-left: 0.65rem;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    padding: 0;
+    background: transparent;
+    color: #2b33bf;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      color: #14108f;
+    }
+  }
 }
 
 @keyframes fade-slide-up {

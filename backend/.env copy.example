@@ -1,0 +1,15 @@
+# ─── Entorno ──────────────────────────────────────────────────────────────────
+APP_ENVIRONMENT=development
+LOGGING_LEVEL=DEBUG
+
+# ─── CORS ─────────────────────────────────────────────────────────────────────
+# URLs permitidas separadas por coma
+ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4201
+
+# ─── Almacenamiento local (para PoC) ─────────────────────────────────────────
+UPLOAD_DIR=./tmp/uploads
+
+# ─── Auth mock (PoC) ──────────────────────────────────────────────────────────
+# En la PoC el login es simulado. Cambiar a false cuando se integre One Account.
+AUTH_MOCK=true
+SECRET_KEY=cambia_esto_antes_de_produccion_1234567890

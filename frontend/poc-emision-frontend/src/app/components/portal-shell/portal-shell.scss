@@ -3,17 +3,17 @@
 }
 
 .dashboard-shell {
-  --sidebar-width: 260px;
-  --sidebar-collapsed-width: 92px;
+  --sidebar-width: 272px;
+  --sidebar-collapsed-width: 84px;
   
   // Colores de la nueva paleta
-  --primary-dark-blue: #1A2B5B; // Para topbar, logo "PE", y activo del sidebar
-  --primary-medium-blue: #2F4373; // Para acentos en topbar/sidebar (ej. usuario)
+  --primary-dark-blue: #14108f;
+  --primary-medium-blue: #2b33bf;
   --white-bg: #FFFFFF;
-  --light-gray-bg: #F8F8F8; // Fondo general del contenido y hover del sidebar
-  --border-color: #E0E0E0; // Bordes sutiles
-  --dark-text: #333333; // Texto principal en fondos claros
-  --soft-dark-text: #666666; // Texto secundario en fondos claros
+  --light-gray-bg: #f5f7fb;
+  --border-color: #e7ebf3;
+  --dark-text: #16223f;
+  --soft-dark-text: #68758e;
   --light-text: #FFFFFF; // Texto en fondos oscuros
   --soft-light-text: rgba(255, 255, 255, 0.8); // Texto secundario en fondos oscuros
 
@@ -30,7 +30,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  background: var(--light-gray-bg); /* Fondo general más claro */
+  background: var(--light-gray-bg);
   color: var(--dark-text);
   transition: grid-template-columns 300ms cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -40,13 +40,16 @@
 }
 
 .sidebar {
-  background: var(--white-bg); /* Ahora es blanca */
-  color: var(--dark-text); /* Texto oscuro */
-  padding: 1.25rem 1rem;
+  background: var(--white-bg);
+  color: var(--dark-text);
+  padding: 1.35rem 1rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  border-right: 1px solid var(--border-color); /* Borde gris claro */
+  gap: 1.75rem;
+  border-right: 1px solid var(--border-color);
+  box-shadow: 8px 0 24px rgba(23, 37, 84, 0.035);
+  position: relative;
+  z-index: 110;
   transition: padding 260ms ease, gap 260ms ease;
 }
 
@@ -66,10 +69,10 @@
 }
 
 .logo-icon { /* Estilos para el logo "PE" */
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--primary-dark-blue); /* Sigue siendo azul para destacar */
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--primary-dark-blue);
   color: var(--light-text);
   display: grid;
   place-items: center;
@@ -126,8 +129,8 @@
 .nav-item {
   width: 100%;
   border: 0;
-  border-radius: 16px;
-  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  padding: 0.82rem 0.9rem;
   display: flex;
   align-items: center;
   gap: 0.85rem;
@@ -146,9 +149,14 @@
   }
 
   &.active {
-    background: var(--primary-dark-blue); /* Fondo azul oscuro para el activo */
-    color: var(--light-text); /* Texto blanco */
-    box-shadow: none;
+    background: #eef0ff;
+    color: var(--primary-dark-blue);
+    box-shadow: inset 3px 0 0 var(--primary-dark-blue);
+
+    .nav-icon {
+      background: var(--primary-dark-blue);
+      color: #fff;
+    }
   }
 
   .nav-icon {
@@ -156,7 +164,7 @@
     font-family: 'Material Icons'; /* Define la fuente para los íconos */
     font-weight: normal;
     font-style: normal;
-    font-size: 1.5rem; /* Tamaño adecuado para 24px */
+    font-size: 1.15rem;
     line-height: 1;
     letter-spacing: normal;
     text-transform: none;
@@ -167,8 +175,14 @@
     font-feature-settings: 'liga';
     -webkit-font-feature-settings: 'liga';
     -webkit-font-smoothing: antialiased;
-    width: 1.5rem; /* Ajustamos el ancho para el tamaño del ícono */
+    width: 1.5rem;
     text-align: center;
+    font-family: inherit;
+    font-weight: 800;
+    color: #7c89a2;
+    background: #f2f4f8;
+    border-radius: 8px;
+    padding: 0.25rem;
   }
 
 }
@@ -182,7 +196,8 @@
   gap: 0.85rem;
   padding: 0.9rem;
   border-radius: 18px;
-  background: var(--light-gray-bg); 
+  background: #f7f8fc;
+  border: 1px solid var(--border-color);
   animation: fadeIn 240ms ease-out;
 
   strong, small {
@@ -210,35 +225,35 @@
 }
 
 .topbar {
-  padding: 1.5rem 2rem;
-  background: var(--primary-dark-blue); /* Ahora es azul oscuro */
-  color: var(--light-text); /* Texto blanco */
-  border-bottom: none; /* Quitamos el borde inferior */
+  padding: 1.25rem 2rem;
+  background: rgba(255, 255, 255, 0.97);
+  color: var(--dark-text);
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   animation: fadeSlideDown 260ms ease-out;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Agregamos una sombra para el efecto "bonito" */
+  box-shadow: 0 8px 20px rgba(23, 37, 84, 0.04);
   position: sticky; /* Para que se quede arriba al hacer scroll */
   top: 0;
   z-index: 100; /* Aseguramos que esté por encima de otros elementos */
 
   h1 {
-    font-size: 2rem;
-    color: var(--light-text); /* Texto blanco */
+    font-size: 1.65rem;
+    color: var(--primary-dark-blue);
   }
 }
 
 .topbar-copy {
   margin-top: 0.35rem;
-  color: var(--soft-light-text); /* Texto blanco suave */
+  color: var(--soft-dark-text);
 }
 
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: var(--soft-light-text); /* Texto blanco suave */
+  color: var(--primary-medium-blue);
   font-size: 0.72rem;
   margin-bottom: 0.35rem;
 }
@@ -247,6 +262,20 @@
   display: flex;
   align-items: center;
   gap: 1rem; /* Ajustado para el espaciado entre los elementos */
+}
+
+.topbar-dot,
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #39a96b;
+  vertical-align: middle;
+}
+
+.topbar-dot {
+  margin: 0 0.25rem;
 }
 /*
 .open-counter {
@@ -281,9 +310,9 @@
   font-size: 0.85rem;
   padding: 0.5rem 0.8rem;
   border-radius: 12px;
-  background: var(--accent-red-bg); /* Fondo rojo claro (mantiene el acento) */
-  color: var(--accent-red-text); /* Textorojo */
-  border: 1px solid var(--accent-red-text); /* Borde rojo */
+  background: #f4fbf7;
+  color: #287d50;
+  border: 1px solid #d7efdf;
 
   .status-label {
     font-weight: 500;
@@ -308,9 +337,9 @@
   gap: 0.5rem;
   padding: 0.5rem 0.8rem;
   border-radius: 12px;
-  background: var(--primary-medium-blue); /* Fondo azul medio */
-  color: var(--light-text);
-  border: none;
+  background: #f0f2ff;
+  color: var(--primary-dark-blue);
+  border: 1px solid #dde1ff;
   font-size: 0.85rem;
   font-weight: 600;
 
@@ -318,8 +347,8 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.2); /* Fondo semitransparente blanco */
-    color: var(--light-text);
+    background: var(--primary-dark-blue);
+    color: #fff;
     display: grid;
     place-items: center;
     font-size: 0.8rem;
@@ -330,9 +359,9 @@
 .btn-logout {
   padding: 0.5rem 0.8rem;
   border-radius: 12px;
-  background: var(--primary-medium-blue); /* Fondo azul medio */
-  color: var(--light-text);
-  border: none;
+  background: #fff;
+  color: var(--primary-dark-blue);
+  border: 1px solid #dfe3ef;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -344,8 +373,14 @@
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1); /* Fondo semitransparente blanco al pasar el mouse */
+    background: #eef0ff;
+    border-color: #cfd5f7;
   }
+}
+
+.mobile-menu-button,
+.sidebar-backdrop {
+  display: none;
 }
 
 
@@ -379,6 +414,111 @@
 }
 
 @media (max-width: 820px) {
+  .dashboard-shell,
+  .dashboard-shell.menu-colapsado {
+    display: block;
+    min-height: 100vh;
+  }
+
+  .dashboard-shell .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(84vw, 300px);
+    padding: 1.25rem 1rem;
+    transform: translateX(-105%);
+    transition: transform 240ms ease;
+    box-shadow: 12px 0 28px rgba(20, 16, 143, 0.12);
+  }
+
+  .dashboard-shell.menu-movil-abierto .sidebar {
+    transform: translateX(0);
+  }
+
+  .dashboard-shell.menu-movil-abierto .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    border: 0;
+    background: rgba(22, 34, 63, 0.28);
+    cursor: pointer;
+  }
+
+  .dashboard-shell .sidebar-brand {
+    justify-content: flex-start;
+  }
+
+  .dashboard-shell .sidebar-nav {
+    gap: 0.45rem;
+  }
+
+  .dashboard-shell .nav-item {
+    justify-content: flex-start;
+    gap: 0.85rem;
+    padding: 0.82rem 0.9rem;
+  }
+
+  .dashboard-shell .nav-item span:not(.nav-icon) {
+    display: inline;
+  }
+
+  .dashboard-shell .sidebar-user {
+    display: flex;
+  }
+
+  .dashboard-shell .collapse-button {
+    display: none;
+  }
+
+  .topbar {
+    flex-direction: row;
+    align-items: center;
+    padding: 1rem;
+  }
+
+  .topbar h1 {
+    font-size: 1.25rem;
+  }
+
+  .topbar-copy {
+    display: none;
+  }
+
+  .topbar-actions {
+    gap: 0.45rem;
+  }
+
+  .topbar-status-item .status-label,
+  .topbar-user-menu .user-name,
+  .btn-logout {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: grid;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    place-content: center;
+    gap: 4px;
+    border: 1px solid #dfe3ef;
+    border-radius: 12px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .mobile-menu-button span {
+    display: block;
+    width: 17px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--primary-dark-blue);
+  }
+
+  .dashboard-content {
+    padding: 1rem;
+  }
+
   .dashboard-shell,
   .dashboard-shell.menu-colapsado {
   grid-template-columns: var(--sidebar-collapsed-width) 1fr;
@@ -453,4 +593,42 @@
   }
 
 
+}
+
+@media (max-width: 820px) {
+  .dashboard-shell .sidebar {
+    width: min(84vw, 300px);
+    transform: translateX(-105%);
+  }
+
+  .dashboard-shell.menu-movil-abierto .sidebar {
+    transform: translateX(0);
+  }
+
+  .dashboard-shell .sidebar-brand {
+    justify-content: flex-start;
+  }
+
+  .dashboard-shell .collapse-button {
+    display: none;
+  }
+
+  .dashboard-shell .nav-item {
+    justify-content: flex-start;
+    gap: 0.85rem;
+    padding: 0.82rem 0.9rem;
+  }
+
+  .dashboard-shell .nav-item span:not(.nav-icon) {
+    display: inline;
+  }
+
+  .dashboard-shell .nav-item.active {
+    background: #eef0ff;
+    color: var(--primary-dark-blue);
+  }
+
+  .dashboard-shell .sidebar-user {
+    display: flex;
+  }
 }

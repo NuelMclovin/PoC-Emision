@@ -18,6 +18,7 @@ export class PortalShellComponent {
   @Input() totalAbiertos = 0;
 
   menuColapsado = false;
+  menuMovilAbierto = false;
 
   constructor(
     private auth: AuthService,
@@ -32,6 +33,14 @@ export class PortalShellComponent {
     this.menuColapsado = !this.menuColapsado;
   }
 
+  toggleMenuMovil(): void {
+    this.menuMovilAbierto = !this.menuMovilAbierto;
+  }
+
+  cerrarMenuMovil(): void {
+    this.menuMovilAbierto = false;
+  }
+
   irASeccion(vista: SeccionPortal): void {
     const destino = vista === 'dashboard'
       ? '/dashboard'
@@ -40,6 +49,7 @@ export class PortalShellComponent {
         : '/gmm/renovacion';
 
     this.router.navigate([destino]);
+    this.cerrarMenuMovil();
   }
 
   logout(): void {

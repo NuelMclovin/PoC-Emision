@@ -77,15 +77,14 @@ COLUMNAS_REQUERIDAS_AP: set[str] = {
 
 # Columnas adicionales requeridas en Renovación GMM
 COLUMNAS_EXTRA_RENOVACION_GMM: set[str] = {
-    "TIPO_MOVIMIENTO",
     "NUMERO_POLIZA",
 }
 
 # Parentescos válidos del catálogo AXA
-PARENTESCOS_VALIDOS = {"Titular", "Cónyuge", "Conyuge", "Hijo", "Padre", "Madre", "Beneficiario"}
-PARENTESCOS_CONYUGE = {"Cónyuge", "Conyuge"}
+PARENTESCOS_VALIDOS = {"Titular", "Cónyuge", "Conyuge", "Esposo", "Esposa", "Hijo", "Hija", "Hermano", "Hermana", "Padre", "Madre", "Beneficiario", "Beneficiaria"}
+PARENTESCOS_CONYUGE = {"Cónyuge", "Conyuge", "Esposo", "Esposa"}
 PARENTESCOS_TITULAR = {"Titular"}
-PARENTESCOS_BENEFICIARIO = {"Hijo", "Padre", "Madre", "Beneficiario"}
+PARENTESCOS_BENEFICIARIO = {"Hijo", "Hija", "Hermano", "Hermana", "Padre", "Madre", "Beneficiario", "Beneficiaria"}
 
 # Tipos de movimiento válidos en renovación
 TIPOS_MOVIMIENTO_VALIDOS = {"ALTA", "BAJA", "CAMBIO", "MODIFICACION", "MODIFICACIÓN", "REACTIVACION", "REACTIVACIÓN"}

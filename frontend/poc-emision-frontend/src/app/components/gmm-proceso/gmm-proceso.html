@@ -195,9 +195,13 @@
             <strong>{{ reporte.resumen.total_errores }}</strong>
             <span>Errores</span>
           </article>
-          <article class="inline-kpi warn">
+          <article class="inline-kpi warn" *ngIf="tipoAccion !== 'renovacion'">
             <strong>{{ reporte.resumen.total_advertencias }}</strong>
             <span>Advertencias</span>
+          </article>
+          <article class="inline-kpi warn" *ngIf="tipoAccion === 'renovacion'">
+            <strong>{{ totalRegistrosConCambios }}</strong>
+            <span>Registros cambiados</span>
           </article>
         </div>
 
@@ -220,8 +224,28 @@
           <table class="inline-table">
             <thead>
               <tr>
-                <th>Tipo</th>
-                <th>Categoría</th>
+                <th>
+                  <span>Tipo</span>
+                  <select [ngModel]="filtroTipoColumna" (ngModelChange)="actualizarFiltroTipo($event)" aria-label="Filtrar por tipo">
+                    <option value="todos">Todos</option>
+                    <option *ngFor="let tipo of opcionesTiposResultado" [value]="tipo">{{ etiquetaTipoResultado(tipo) }}</option>
+                  </select>
+                </th>
+                <th>
+                  <span>Movimiento</span>
+                  <select [ngModel]="filtroMovimiento" (ngModelChange)="actualizarFiltroMovimiento($event)" aria-label="Filtrar por movimiento">
+                    <option value="todos">Todos</option>
+                    <option *ngFor="let movimiento of opcionesMovimientos" [value]="movimiento">{{ movimiento }}</option>
+                  </select>
+                </th>
+                <th>
+                  <span>Campo afectado</span>
+                  <select [ngModel]="filtroCategoria" (ngModelChange)="actualizarFiltroCategoria($event)" aria-label="Filtrar por categoría">
+                    <option value="todos">Todos</option>
+                    <option *ngFor="let categoria of opcionesCategorias" [value]="categoria">{{ categoria }}</option>
+                  </select>
+                </th>
+                <th>Detalle</th>
                 <th>Mensaje</th>
                 <th>Fila</th>
                 <th>Columna</th>
@@ -232,10 +256,12 @@
               <tr *ngFor="let resultado of resultadosFiltrados" [class]="'row-' + obtenerClaseResultado(resultado.tipo)">
                 <td>
                   <span class="result-badge" [class]="'badge-' + obtenerClaseResultado(resultado.tipo)">
-                    {{ resultado.tipo === 'advertencia' ? 'Advertencia' : 'Error' }}
+                    {{ resultado.tipo === 'advertencia' ? 'Advertencia' : resultado.tipo === 'info' ? 'Informacion' : 'Error' }}
                   </span>
                 </td>
-                <td>{{ resultado.categoria }}</td>
+                <td>{{ resultado.tipo_movimiento ?? resultado.categoria }}</td>
+                <td>{{ columnasDelResultado(resultado).join(', ') || resultado.categoria }}</td>
+                <td>{{ resultado.detalle ?? '-' }}</td>
                 <td>{{ resultado.mensaje }}</td>
                 <td>{{ resultado.fila ?? '-' }}</td>
                 <td>{{ resultado.columna ?? '-' }}</td>
@@ -248,6 +274,9 @@
         <ng-template #sinResultadosInline>
           <div class="empty-inline-report">
             No hay resultados para el filtro seleccionado.
+            <button class="clear-inline-filters" type="button" (click)="limpiarFiltrosColumnas(); setFiltroResultados('todos')">
+              Mostrar todos
+            </button>
           </div>
         </ng-template>
       </section>
