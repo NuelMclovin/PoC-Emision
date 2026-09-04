@@ -5,6 +5,7 @@
   [seccionActiva]="tipoAccion">
   <section class="process-layout">
     <aside class="process-help">
+      <span class="help-eyebrow">Guia de carga</span>
       <h2>Layout del censo</h2>
       <p>Al cargar el archivo, el sistema analiza automaticamente los datos y muestra el resumen en esta misma pantalla.</p>
 
@@ -17,7 +18,13 @@
       </div>
 
       <div class="process-tip">
-        Consejo: puedes arrastrar el archivo o hacer clic en el area punteada para iniciar el analisis.
+        <strong>Consejo</strong>
+        <span>Puedes arrastrar el archivo o hacer clic en el area punteada para iniciar el analisis.</span>
+      </div>
+
+      <div class="process-trust">
+        <span class="trust-dot"></span>
+        <span>Archivos protegidos durante la validacion</span>
       </div>
     </aside>
 
@@ -28,7 +35,7 @@
           <p>{{ configuracionActual.subtituloPanel }}</p>
         </div>
         <!-- El estadoTexto del componente ya maneja la lógica compleja de mostrar el estado adecuado -->
-        <span class="status-chip"
+        <span class="status-chip" role="status" aria-live="polite"
           [class.analizando]="estaAnalizando"
           [class.listo]="(tipoAccion === 'nueva' && estadoRevision === 'listo') || (tipoAccion === 'renovacion' && etapaRenovacion === 'renovacionCompletada')"
           [class.error]="(tipoAccion === 'nueva' && estadoRevision === 'error') || (tipoAccion === 'renovacion' && etapaRenovacion === 'errorRenovacion')">
@@ -50,7 +57,7 @@
           (drop)="onDropArchivo($event, false)">
           <input #inputArchivo type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoSeleccionado($event, false)" hidden />
           <div class="drop-visual process-drop-visual">
-            <div class="drop-icon">{{ nombreArchivo ? 'OK' : 'UP' }}</div>
+            <div class="drop-icon" aria-hidden="true">{{ nombreArchivo ? '✓' : '↑' }}</div>
             <p class="drop-text">{{ nombreArchivo || 'Arrastra tu archivo aqui o haz clic para subirlo' }}</p>
             <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
             <p class="drop-subhint">Proceso para alta de póliza nueva</p>
@@ -63,6 +70,16 @@
 
       <!-- --- UI para el proceso de 'Renovación' de póliza --- -->
       <ng-container *ngIf="tipoAccion === 'renovacion'">
+        <div class="renewal-steps" aria-label="Pasos de renovacion">
+          <div class="renewal-step" [class.active]="etapaRenovacion === 'cargandoBase'" [class.done]="!!reporteBase && estadoRevisionBase === 'listo'">
+            <span>1</span><div><strong>Archivo base</strong><small>Validar historico</small></div>
+          </div>
+          <div class="step-line" [class.done]="!!reporteBase && estadoRevisionBase === 'listo'"></div>
+          <div class="renewal-step" [class.active]="etapaRenovacion !== 'cargandoBase'" [class.done]="etapaRenovacion === 'renovacionCompletada'">
+            <span>2</span><div><strong>Archivo nuevo</strong><small>Comparar renovacion</small></div>
+          </div>
+        </div>
+
         <!-- Paso 1: Cargar y Validar Archivo Base -->
         <div class="drop-zone process-drop-zone"
           [class.has-file]="!!nombreArchivoBase"
@@ -75,7 +92,7 @@
           (drop)="onDropArchivo($event, true)">
           <input #inputArchivoBase type="file" accept=".xlsx,.xls,.xlsm,.csv" (change)="onArchivoSeleccionado($event, true)" hidden />
           <div class="drop-visual process-drop-visual">
-            <div class="drop-icon">{{ nombreArchivoBase ? 'OK' : 'UP' }}</div>
+            <div class="drop-icon" aria-hidden="true">{{ nombreArchivoBase ? '✓' : '↑' }}</div>
             <p class="drop-text">{{ nombreArchivoBase || 'Arrastra el archivo BASE (anterior) aquí o haz clic para subirlo' }}</p>
             <p class="drop-hint">Archivos permitidos: XLSX, XLS, XLSM o CSV</p>
             <p class="drop-subhint">Paso 1: Carga y valida el archivo base de la póliza anterior.</p>
@@ -205,7 +222,27 @@
           </article>
         </div>
 
+        <div class="movement-summary" *ngIf="tipoAccion === 'renovacion'">
+          <div class="movement-intro">
+            <span class="analysis-label">Resultado de comparación</span>
+            <p>Revisa qué ocurrió con cada registro frente al archivo base.</p>
+          </div>
+          <button class="movement-card alta" type="button" (click)="actualizarFiltroMovimiento('Alta')">
+            <span class="movement-icon">+</span><strong>{{ totalPorMovimiento('Alta') }}</strong><small>Altas</small>
+          </button>
+          <button class="movement-card baja" type="button" (click)="actualizarFiltroMovimiento('Baja')">
+            <span class="movement-icon">↓</span><strong>{{ totalPorMovimiento('Baja') }}</strong><small>Bajas</small>
+          </button>
+          <button class="movement-card cambio" type="button" (click)="actualizarFiltroMovimiento('Cambio')">
+            <span class="movement-icon">↔</span><strong>{{ totalPorMovimiento('Cambio') }}</strong><small>Cambios</small>
+          </button>
+          <button class="movement-card vigente" type="button" (click)="actualizarFiltroMovimiento('Vigente')">
+            <span class="movement-icon">✓</span><strong>{{ totalPorMovimiento('Vigente') }}</strong><small>Vigentes</small>
+          </button>
+        </div>
+
         <div class="report-filters">
+          <span class="filter-label">Mostrar</span>
           <button class="filter-btn" type="button" [class.active]="filtroResultados === 'todos'" (click)="setFiltroResultados('todos')">
             Todos
             <span>{{ reporte.resultados.length }}</span>
@@ -218,9 +255,14 @@
             Advertencias
             <span>{{ totalAdvertencias }}</span>
           </button>
+          <button class="filter-btn info" type="button" [class.active]="filtroResultados === 'info'" (click)="setFiltroResultados('info')">
+            Información
+            <span>{{ totalInformacion }}</span>
+          </button>
         </div>
 
         <div class="inline-table-wrapper" *ngIf="resultadosFiltrados.length > 0; else sinResultadosInline">
+          <div class="table-summary">{{ resultadosFiltrados.length }} hallazgo{{ resultadosFiltrados.length === 1 ? '' : 's' }} visible{{ resultadosFiltrados.length === 1 ? '' : 's' }}</div>
           <table class="inline-table">
             <thead>
               <tr>
@@ -256,7 +298,7 @@
               <tr *ngFor="let resultado of resultadosFiltrados" [class]="'row-' + obtenerClaseResultado(resultado.tipo)">
                 <td>
                   <span class="result-badge" [class]="'badge-' + obtenerClaseResultado(resultado.tipo)">
-                    {{ resultado.tipo === 'advertencia' ? 'Advertencia' : resultado.tipo === 'info' ? 'Informacion' : 'Error' }}
+                    {{ resultado.tipo === 'advertencia' ? 'Advertencia' : resultado.tipo === 'info' ? 'Información' : 'Error' }}
                   </span>
                 </td>
                 <td>{{ resultado.tipo_movimiento ?? resultado.categoria }}</td>

@@ -32,7 +32,7 @@ export class GmmProcesoComponent implements OnDestroy {
   error = '';
   reporteActual: ReporteValidacion | null = null;
   mostrarResumen = false;
-  filtroResultados: 'todos' | 'error' | 'advertencia' = 'todos';
+  filtroResultados: 'todos' | 'error' | 'advertencia' | 'info' = 'todos';
   filtroTipoColumna: 'todos' | ResultadoValidacion['tipo'] = 'todos';
   filtroMovimiento = 'todos';
   filtroCategoria = 'todos';
@@ -187,6 +187,14 @@ export class GmmProcesoComponent implements OnDestroy {
 
   get totalAdvertencias(): number {
     return this.reporteActual?.resultados.filter((resultado: ResultadoValidacion) => resultado.tipo === 'advertencia').length ?? 0;
+  }
+
+  get totalInformacion(): number {
+    return this.reporteActual?.resultados.filter((resultado: ResultadoValidacion) => resultado.tipo === 'info').length ?? 0;
+  }
+
+  totalPorMovimiento(movimiento: string): number {
+    return this.reporteActual?.resultados.filter((resultado) => resultado.tipo_movimiento === movimiento).length ?? 0;
   }
 
   get totalRegistrosConCambios(): number {
@@ -570,14 +578,14 @@ export class GmmProcesoComponent implements OnDestroy {
     });
   }
 
-  setFiltroResultados(filtro: 'todos' | 'error' | 'advertencia'): void {
+  setFiltroResultados(filtro: 'todos' | 'error' | 'advertencia' | 'info'): void {
     this.filtroResultados = filtro;
     this.filtroTipoColumna = filtro;
   }
 
   actualizarFiltroTipo(tipo: 'todos' | ResultadoValidacion['tipo']): void {
     this.filtroTipoColumna = tipo;
-    this.filtroResultados = tipo === 'error' || tipo === 'advertencia' ? tipo : 'todos';
+    this.filtroResultados = tipo === 'error' || tipo === 'advertencia' || tipo === 'info' ? tipo : 'todos';
     this.ajustarFiltroMovimiento();
     this.ajustarFiltroCategoria();
   }

@@ -425,7 +425,8 @@ def _realizar_comparacion(
             columnas_afectadas=columnas_afectadas,
         )
 
-    # Una baja que reaparece sí es un error. Una baja correctamente ausente solo se informa.
+    # Una baja histórica que reaparece sí es un error. Si no reaparece, se
+    # informa como baja conforme a la regla del negocio.
     for clave_persona, indices_base in base_por_clave.items():
         indice_baja = next((indice for indice in indices_base if indice in base_inactiva), None)
         if indice_baja is None:
@@ -447,20 +448,20 @@ def _realizar_comparacion(
                 TipoError.INFO,
                 "Baja",
                 f"{nombre(base)} está dado de baja y no aparece en la renovación.",
-                detalle="Correcto: no fue incluido en el archivo nuevo.",
+                detalle="Baja confirmada: no fue incluido en el archivo nuevo.",
                 valor=nombre(base),
             ))
 
-    # Los activos ausentes continúan vigentes y no se clasifican como baja.
+    # Todo registro de la base que no aparece en el nuevo es una baja.
     for clave_persona, indices_base in base_por_clave.items():
-        if clave_persona in nuevo_por_clave or all(indice in base_inactiva for indice in indices_base):
+        if clave_persona in nuevo_por_clave or any(indice in base_inactiva for indice in indices_base):
             continue
         base = df_base.loc[indices_base[0]]
         resultados.append(resultado(
             TipoError.INFO,
-            "Vigente",
-            f"{nombre(base)} continúa vigente aunque no aparezca en la renovación.",
-            detalle="No se marca como baja.",
+            "Baja",
+            f"{nombre(base)} aparece en la base pero no en la renovación.",
+            detalle="Baja propuesta: el registro debe revisarse antes de emitir la renovación.",
             valor=nombre(base),
         ))
 
@@ -578,19 +579,18 @@ def _realizar_comparacion_detallada(
                     valor=nombre(fila),
                 ))
 
-    # Los activos que no aparecen en el nuevo continúan vigentes; no son baja.
+    # Todo registro de la base que no aparece en el nuevo es una baja.
     for clave_persona, indices_base in base_por_clave.items():
         if clave_persona in nuevo_por_clave:
             continue
         for indice_base in indices_base:
-            if indice_base not in base_inactiva:
-                fila = df_base.loc[indice_base]
-                resultados.append(ResultadoValidacion(
-                    tipo=TipoError.INFO,
-                    categoria="COMPARACION_VIGENTE_NO_INCLUIDO",
-                    mensaje=f"El registro continúa vigente aunque no aparezca en el archivo nuevo: '{nombre(fila)}'.",
-                    valor=nombre(fila),
-                ))
+            fila = df_base.loc[indice_base]
+            resultados.append(ResultadoValidacion(
+                tipo=TipoError.INFO,
+                categoria="COMPARACION_BAJA",
+                mensaje=f"El registro no aparece en el archivo nuevo y se considera baja: '{nombre(fila)}'.",
+                valor=nombre(fila),
+            ))
 
     # Para coincidencias activas, informar únicamente columnas que cambiaron.
     columnas_comparables = [
